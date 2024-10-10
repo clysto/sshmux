@@ -1,0 +1,11 @@
+[Unit]
+Description=SSHPiper Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/sshpiperd -i /var/lib/sshmux/sshpiperkey --server-key-generate-mode notexist /usr/local/bin/sshpiper-plugin --private-key /var/lib/sshmux/client-ed25519 --db /var/lib/sshmux/sshmux.db --port 2221
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target

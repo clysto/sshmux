@@ -1,0 +1,101 @@
+{{define "content"}}
+<div class="card shadow-sm mt-4">
+  <div class="card-body">
+    <h1 class="h4 mb-4 text-center">Account</h1>
+
+    <div class="mb-4 text-center">
+      <strong>User:</strong>
+      <span class="text-muted">{{ .user }}</span>
+      <!-- Logout 按钮 -->
+      <a href="/logout" class="btn btn-danger btn-sm ms-3">注销</a>
+    </div>
+
+    <h2 class="h5 mb-3">我的公钥</h2>
+    <ul class="list-group mb-4">
+      {{
+        range.pubkeys
+      }}
+      <li class="list-group-item d-flex justify-content-between align-items-end">
+        <div class="flex-grow-1">
+          <span class="font-monospace text-break">{{ .Key }}</span>
+        </div>
+        <button
+          class="btn btn-danger btn-sm ms-3 flex-shrink-0"
+          data-bs-toggle="modal"
+          data-bs-target="#confirmDeleteModal"
+          data-id="{{ .ID }}"
+        >
+          删除
+        </button>
+      </li>
+      {{
+        end
+      }}
+    </ul>
+
+    <div class="d-flex justify-content-center">
+      <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addKeyModal">
+        添加公钥
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addKeyModal" tabindex="-1" aria-labelledby="addKeyModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addKeyModalLabel">添加公钥</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="/pubkey">
+          <div class="mb-3">
+            <label for="publicKey" class="form-label">Public Key</label>
+            <textarea class="form-control font-monospace" id="publicKey" name="publicKey" rows="3" required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary">确定</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div
+  class="modal fade"
+  id="confirmDeleteModal"
+  tabindex="-1"
+  aria-labelledby="confirmDeleteModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmDeleteModalLabel">确认删除</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">你确定要删除这个公钥吗？</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <form id="deleteForm" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-danger">确定</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var confirmDeleteModal = document.getElementById('confirmDeleteModal');
+  confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget; // 触发模态框的按钮
+    var pubkeyId = button.getAttribute('data-id'); // 从按钮的 data-id 属性获取公钥 ID
+    var form = document.getElementById('deleteForm');
+    form.action = '/pubkey/delete/' + pubkeyId; // 动态设置 form 的 action URL
+  });
+</script>
+{{ end }}

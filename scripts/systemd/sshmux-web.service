@@ -1,0 +1,11 @@
+[Unit]
+Description=SSHMUX Web Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/sshmux-web --external-host="" --client-id="" --client-secret="" --issuer-url="" --sso-label="" --db="/var/lib/sshmux/sshmux.db"
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
