@@ -20,13 +20,16 @@
         </div>
         <span class="badge text-bg-secondary">SSH</span>
       </div>
-      <div class="flex-grow-1">
-        <div>
-          <span style="font-size: 14px" class="font-monospace text-break">{{ .Key }}</span>
+      <div class="flex-grow-1" style="font-size: 14px">
+        <div class="font-monospace text-break key-text">
+          {{ .Key }}
         </div>
-        <span class="d-inline-block mt-2 text-body-secondary">
-          Updated at {{ .UpdatedAt.Format "Jan 2, 2006 (timezone MST)" }}
-        </span>
+        <p class="mt-4 mb-0 text-body-secondary">Updated at {{ .UpdatedAt.Format "Jan 2, 2006 (timezone MST)" }}</p>
+        {{if eq $.latest .ID }}
+        <p class="mt-0 mb-0 text-success">Last used {{ duration .UsedAt }}</p>
+        {{ else }}
+        <p class="mt-0 mb-0 text-body-secondary">Last used {{ duration .UsedAt }}</p>
+        {{ end }}
       </div>
       <div class="ms-3 flex-shrink-0 d-flex justify-content-center align-items-center">
         <button

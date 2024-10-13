@@ -22,7 +22,8 @@
       {{ end }}
     </form>
     {{ if .ssos }}
-    <div class="d-grid mt-4">
+    <hr class="mt-5 mb-3" />
+    <div class="d-grid">
       {{ range.ssos }}
       <a href="{{ .url }}" class="btn btn-secondary mt-2">{{ .label }}</a>
       {{ end }}

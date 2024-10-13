@@ -44,6 +44,13 @@
         max-width: 500px;
         margin: 0 auto;
       }
+      .key-text {
+        display: -webkit-box;
+        line-clamp: 4;
+        -webkit-line-clamp: 4;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
     </style>
     <title>SSHMUX</title>
   </head>
@@ -57,14 +64,14 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-              <a class="nav-link" href="/">Home</a>
+              <a class="nav-link {{ if eq .currentUrl "/" }} active{{end}}" href="/">Home</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/account">Account</a>
+              <a class="nav-link {{ if eq .currentUrl "/account" }} active{{end}}" href="/account">Account</a>
             </li>
             {{if and .user .user.IsAdmin }}
             <li class="nav-item">
-              <a class="nav-link" href="/admin">Admin</a>
+              <a class="nav-link {{ if eq .currentUrl "/admin" }} active{{end}}" href="/admin">Admin</a>
             </li>
             {{
               end
@@ -75,7 +82,7 @@
             <button class="btn btn-link nav-link dropdown-toggle" id="userButton" data-bs-toggle="dropdown">
               {{.user.Username}}
             </button>
-            <ul class="dropdown-menu dropdown-menu-end">
+            <ul class="dropdown-menu dropdown-menu-lg-end">
               <li>
                 <a href="/username" class="dropdown-item">
                   <i class="bi bi-pencil-square me-2"></i>
@@ -90,12 +97,12 @@
               </li>
             </ul>
           </div>
-          <div class="divider border-end"></div>
+          <div class="divider border-end d-none d-md-none d-lg-block"></div>
           {{ end }}
           <div class="nav-item dropdown dark-mode-dropdown">
             {{$darkClass := ""}}
             {{$lightClass := ""}}
-            <button class="btn btn-link nav-link dropdown-toggle" id="darkModeToggle" data-bs-toggle="dropdown">
+            <button class="btn btn-link nav-link dropdown-toggle mt-lg-0 mt-2" id="darkModeToggle" data-bs-toggle="dropdown">
               {{ if eq .theme "dark" }}
               {{ $darkClass = "dropdown-item active" }}
               {{ $lightClass = "dropdown-item" }}
@@ -106,7 +113,7 @@
               <i class="bi bi-moon-stars-fill"></i>
               {{ end }}
             </button>
-            <ul class="dropdown-menu dropdown-menu-end">
+            <ul class="dropdown-menu dropdown-menu-lg-end">
               <li>
                 <button id="darkButton" class="{{ $darkClass }}">
                   <i class="me-2 bi bi-brightness-high-fill"></i>

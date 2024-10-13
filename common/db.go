@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
@@ -32,4 +34,5 @@ type Pubkey struct {
 	gorm.Model
 	UserId uint
 	Key    string
+	UsedAt time.Time
 }

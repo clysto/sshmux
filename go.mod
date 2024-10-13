@@ -7,6 +7,7 @@ replace golang.org/x/crypto => github.com/tg123/sshpiper.crypto v0.27.0-sshpiper
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/coreos/go-oidc/v3 v3.11.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/foolin/goview v0.3.0
 	github.com/gin-contrib/sessions v1.0.1
 	github.com/gin-gonic/gin v1.10.0
@@ -25,7 +26,6 @@ require (
 	github.com/cloudwego/base64x v0.1.4 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect

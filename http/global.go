@@ -8,6 +8,7 @@ import (
 )
 
 type SsoProvider struct {
+	Name     string
 	Label    string
 	Config   oauth2.Config
 	Provider *oidc.Provider
@@ -16,7 +17,7 @@ type SsoProvider struct {
 
 var api *common.API
 
-var ssoProviders map[string]SsoProvider
+var ssoProviders []*SsoProvider
 
-var ssopiperHost string
-var ssopiperPort int
+var sshpiperHost string
+var sshpiperPort int

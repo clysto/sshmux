@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sshmux/cmd"
 	"sshmux/http"
 	"sshmux/sshpiperplugin"
 
@@ -17,10 +18,11 @@ func main() {
 		ErrWriter: os.Stderr,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:     "config",
-				Aliases:  []string{"c"},
-				Usage:    "toml config file",
-				Required: true,
+				Name:        "config",
+				Aliases:     []string{"c"},
+				Usage:       "toml config file",
+				DefaultText: "/etc/sshmux.toml",
+				Required:    true,
 			},
 		},
 		Commands: []*cli.Command{
@@ -33,6 +35,20 @@ func main() {
 				Name:   "plugin",
 				Usage:  "start sshpiper plugin",
 				Action: sshpiperplugin.StartPlugin,
+			},
+			{
+				Name:      "passwd",
+				Usage:     "change user password",
+				Args:      true,
+				ArgsUsage: "<username> <password>",
+				Action:    cmd.Passwd,
+			},
+			{
+				Name:      "admin",
+				Usage:     "set user as admin",
+				Args:      true,
+				ArgsUsage: "<username> <true|false>",
+				Action:    cmd.SetAdmin,
 			},
 		},
 	}

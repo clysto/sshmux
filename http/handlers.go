@@ -7,17 +7,24 @@ import (
 	"sshmux/common"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
 func Home(c *gin.Context) {
-	targets := api.ListTargets()
+	query := c.Query("q")
+	var targets []common.Target
+	if query != "" {
+		targets = api.SearchTargets(query)
+	} else {
+		targets = api.ListTargets()
+	}
 	ReturnHTML(c, "index", gin.H{
 		"targets":      targets,
-		"sshpiperHost": ssopiperHost,
-		"sshpiperPort": ssopiperPort,
+		"sshpiperHost": sshpiperHost,
+		"sshpiperPort": sshpiperPort,
 	})
 }
 
@@ -28,14 +35,12 @@ func Login(c *gin.Context) {
 		state := RandState()
 		session.Set("oauth_state", state)
 
-		println(session.Get("oauth_state").(string))
-
 		var ssos []gin.H
 		// Add the SSO providers to the HTML page
-		for ssoName, sso := range ssoProviders {
+		for _, sso := range ssoProviders {
 			ssos = append(ssos, gin.H{
 				"label": sso.Label,
-				"url":   sso.Config.AuthCodeURL(fmt.Sprintf("%s-%s", ssoName, state)),
+				"url":   sso.Config.AuthCodeURL(fmt.Sprintf("%s-%s", sso.Name, state)),
 			})
 		}
 
@@ -76,9 +81,19 @@ func Account(c *gin.Context) {
 	user := c.MustGet("user").(common.User)
 	keys := api.GetPubkeysByUserID(user.ID)
 
+	latestKeyID := -1
+	latestUsedAt := time.Time{}
+	for _, key := range keys {
+		if key.UsedAt.After(latestUsedAt) {
+			latestUsedAt = key.UsedAt
+			latestKeyID = int(key.ID)
+		}
+	}
+
 	ReturnHTML(c, "account", gin.H{
 		"user":    user,
 		"pubkeys": keys,
+		"latest":  latestKeyID,
 	})
 }
 
@@ -104,8 +119,15 @@ func AuthCallback(c *gin.Context) {
 		return
 	}
 
-	ssoProvider, ok := ssoProviders[ssoName]
-	if !ok {
+	var ssoProvider *SsoProvider
+	for _, sso := range ssoProviders {
+		if ssoName == sso.Name {
+			ssoProvider = sso
+			break
+		}
+	}
+
+	if ssoProvider == nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid state parameter")
 		return
 	}

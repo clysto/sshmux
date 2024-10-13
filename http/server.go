@@ -5,10 +5,12 @@ import (
 	"embed"
 	"encoding/gob"
 	"fmt"
+	"html/template"
 	"path/filepath"
 	"sshmux/common"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/dustin/go-humanize"
 	"github.com/foolin/goview"
 	"github.com/foolin/goview/supports/ginview"
 	"github.com/gin-contrib/sessions"
@@ -33,17 +35,17 @@ func RunServer(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	ssopiperHost = config.SSHHost
-	ssopiperPort = config.SSHPort
+	sshpiperHost = config.SSHHost
+	sshpiperPort = config.SSHPort
 
 	// Config SSO providers
-	ssoProviders = make(map[string]SsoProvider)
-	for ssoName, ssoConfig := range config.SSOProviders {
+	for _, ssoConfig := range config.SSOProviders {
 		provider, err := oidc.NewProvider(context.Background(), ssoConfig.IssuerURL)
 		if err != nil {
 			return err
 		}
-		ssoProviders[ssoName] = SsoProvider{
+		ssoProviders = append(ssoProviders, &SsoProvider{
+			Name:  ssoConfig.Name,
 			Label: ssoConfig.Label,
 			Config: oauth2.Config{
 				ClientID:     ssoConfig.ClientID,
@@ -54,7 +56,7 @@ func RunServer(cCtx *cli.Context) error {
 			},
 			Provider: provider,
 			Verifier: provider.Verifier(&oidc.Config{ClientID: ssoConfig.ClientID}),
-		}
+		})
 	}
 
 	// Config API
@@ -73,19 +75,22 @@ func RunServer(cCtx *cli.Context) error {
 	app.Use(sessions.Sessions("sshmux", sessionStore))
 
 	gv := ginview.New(goview.Config{
-		Root:         "templates",
+		Root:         "http/templates",
 		Extension:    ".tmpl",
 		Master:       "layout",
 		DisableCache: true,
+		Funcs: template.FuncMap{
+			"duration": humanize.Time,
+		},
 	})
 
-	gv.SetFileHandler(embeddedFH)
+	// gv.SetFileHandler(embeddedFH)
 
 	app.HTMLRender = gv
 
 	app.Use(Auth())
 
-	app.GET("/", Home)
+	app.GET("/", RequireLogin(), Home)
 	app.GET("/login", Login)
 	app.GET("/logout", Logout)
 	app.GET("/admin", RequireAdmin(), Admin)

@@ -48,6 +48,12 @@ func (api *API) ListTargets() []Target {
 	return targets
 }
 
+func (api *API) SearchTargets(q string) []Target {
+	var targets []Target
+	api.db.Where("name LIKE ?", "%"+q+"%").Find(&targets)
+	return targets
+}
+
 func (api *API) CreateTarget(target Target) error {
 	return api.db.Create(&target).Error
 }
@@ -86,6 +92,18 @@ func (api *API) GetPubkeyById(id int) *Pubkey {
 		return nil
 	}
 	return &pubkey
+}
+
+func (api *API) PubkeyUsedAt(pubkey Pubkey) {
+	api.db.Save(&pubkey)
+}
+
+func (api *API) GetUserByName(username string) *User {
+	var user User
+	if api.db.Where("username = ?", username).First(&user).Error != nil {
+		return nil
+	}
+	return &user
 }
 
 func (api *API) GetUserBySSO(providerName, subject string) *User {

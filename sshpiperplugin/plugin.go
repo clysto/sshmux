@@ -6,6 +6,7 @@ import (
 	"os"
 	"sshmux/common"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -65,6 +66,8 @@ func (p *plugin) findAndCreateUpstream(conn libplugin.ConnMetadata, _ string, pu
 			return nil, fmt.Errorf("failed to parse public key [%v]", pubkey.Key)
 		}
 		if bytes.Equal(authedPubkey.Marshal(), publicKey) {
+			pubkey.UsedAt = time.Now()
+			p.api.PubkeyUsedAt(pubkey)
 			return &libplugin.Upstream{
 				Host:          target.Host,
 				Port:          target.Port,
