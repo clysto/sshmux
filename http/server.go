@@ -75,7 +75,7 @@ func RunServer(cCtx *cli.Context) error {
 	app.Use(sessions.Sessions("sshmux", sessionStore))
 
 	gv := ginview.New(goview.Config{
-		Root:         "http/templates",
+		Root:         "templates",
 		Extension:    ".tmpl",
 		Master:       "layout",
 		DisableCache: true,
@@ -84,7 +84,7 @@ func RunServer(cCtx *cli.Context) error {
 		},
 	})
 
-	// gv.SetFileHandler(embeddedFH)
+	gv.SetFileHandler(embeddedFH)
 
 	app.HTMLRender = gv
 
