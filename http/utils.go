@@ -32,7 +32,7 @@ func ReturnError(c *gin.Context, code int, message string) {
 	if referer == "" {
 		referer = "/"
 	}
-	c.HTML(code, "error", gin.H{
+	ReturnHTML(c, "error", gin.H{
 		"code":    code,
 		"message": message,
 		"referer": referer,
@@ -41,6 +41,9 @@ func ReturnError(c *gin.Context, code int, message string) {
 }
 
 func ReturnHTML(c *gin.Context, name string, data gin.H) {
+	if data == nil {
+		data = gin.H{}
+	}
 	user, ok := c.Get("user")
 	theme, err := c.Cookie("theme")
 	if err != nil {

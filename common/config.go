@@ -11,13 +11,14 @@ type SSOConfig struct {
 }
 
 type Config struct {
-	Port         int                  `toml:"http_port"`
-	SSHPort      int                  `toml:"ssh_port"`
-	SSHHost      string               `toml:"ssh_host"`
-	ExternalURL  string               `toml:"external_url"`
-	SSOProviders map[string]SSOConfig `toml:"sso_providers"`
-	DB           string               `toml:"db"`
-	PrivateKey   string               `toml:"private_key"`
+	Port          int                  `toml:"http_port"`
+	SSHPort       int                  `toml:"ssh_port"`
+	SSHHost       string               `toml:"ssh_host"`
+	ExternalURL   string               `toml:"external_url"`
+	SSOProviders  map[string]SSOConfig `toml:"sso_providers"`
+	DB            string               `toml:"db"`
+	PrivateKey    string               `toml:"private_key"`
+	SessionSecret string               `toml:"session_secret"`
 }
 
 func LoadConfig(path string) (*Config, error) {

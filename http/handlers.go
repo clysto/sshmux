@@ -39,12 +39,12 @@ func Login(c *gin.Context) {
 			})
 		}
 
-		errors := session.Flashes("error")
+		errorFlashes := session.Flashes("error")
 		session.Save()
 
 		ReturnHTML(c, "login", gin.H{
 			"ssos":   ssos,
-			"errors": errors,
+			"errors": errorFlashes,
 		})
 	} else if c.Request.Method == "POST" {
 		username := c.PostForm("username")
@@ -141,6 +141,7 @@ func AuthCallback(c *gin.Context) {
 	// Find or create the user
 	user := api.GetUserBySSO(ssoName, claims.Subject)
 	if user == nil {
+		// First time login
 		user = &common.User{
 			Username: claims.PreferredUsername,
 			IsAdmin:  false,
@@ -151,11 +152,14 @@ func AuthCallback(c *gin.Context) {
 				},
 			},
 		}
-		err := api.CreateUser(*user)
-		if err != nil {
-			ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create user: %v", err))
-			return
-		}
+		session.Set("creatingUser", *user)
+		session.Save()
+		c.Redirect(http.StatusFound, "/username")
+		// err := api.CreateUser(*user)
+		// if err != nil {
+		// 	ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create user: %v", err))
+		// 	return
+		// }
 	}
 
 	session.Set("user", *user)
@@ -279,6 +283,63 @@ func DeleteTarget(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/admin")
+}
+
+func ChangeUserName(c *gin.Context) {
+	session := sessions.Default(c)
+	creating := false
+	var user common.User
+	if session.Get("creatingUser") != nil {
+		user = session.Get("creatingUser").(common.User)
+		creating = true
+	} else {
+		v, ok := c.Get("user")
+		if !ok {
+			ReturnError(c, http.StatusBadRequest, "Invalid user")
+			return
+		}
+		user = v.(common.User)
+	}
+
+	if c.Request.Method == "GET" {
+		errorFlashes := session.Flashes("error")
+		session.Save()
+		ReturnHTML(c, "username", gin.H{
+			"user":   user,
+			"errors": errorFlashes,
+		})
+	} else if c.Request.Method == "POST" {
+		username := c.PostForm("username")
+		user.Username = username
+
+		// check if username is already taken
+		if api.UserExists(username) {
+			session.AddFlash("Username is already taken", "error")
+			session.Save()
+			c.Redirect(http.StatusFound, "/username")
+			return
+		}
+
+		if creating {
+			err := api.CreateUser(user)
+			if err != nil {
+				ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create user: %v", err))
+				return
+			}
+			session.Delete("creatingUser")
+		} else {
+			err := api.UpdateUser(user)
+			if err != nil {
+				ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to update user: %v", err))
+				return
+			}
+		}
+
+		session.Set("user", user)
+		session.Save()
+
+		c.Redirect(http.StatusFound, "/account")
+	}
 }
 
 func HandleNotFound(c *gin.Context) {

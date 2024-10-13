@@ -66,7 +66,7 @@ func RunServer(cCtx *cli.Context) error {
 	// Start the web server
 	app := gin.Default()
 	gob.Register(common.User{})
-	sessionStore := memstore.NewStore([]byte("secret"))
+	sessionStore := memstore.NewStore([]byte(config.SessionSecret))
 	sessionStore.Options(sessions.Options{
 		MaxAge: 1800, // 30 minutes
 	})
@@ -91,6 +91,7 @@ func RunServer(cCtx *cli.Context) error {
 	app.GET("/admin", RequireAdmin(), Admin)
 	app.GET("/account", RequireLogin(), Account)
 	app.GET("/auth/callback", AuthCallback)
+	app.GET("/username", ChangeUserName)
 
 	app.POST("/login", Login)
 	app.POST("/pubkey", RequireLogin(), CreatePubkey)
@@ -98,6 +99,7 @@ func RunServer(cCtx *cli.Context) error {
 	app.POST("/target", RequireAdmin(), CreateTarget)
 	app.POST("/target/delete/:id", RequireAdmin(), DeleteTarget)
 	app.POST("/target/update/:id", RequireAdmin(), UpdateTarget)
+	app.POST("/username", ChangeUserName)
 
 	app.NoRoute(HandleNotFound)
 

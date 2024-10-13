@@ -1,0 +1,28 @@
+{{ define "content"}}
+<div class="row">
+  <div class="col-md-6 offset-md-3">
+    <div class="card">
+      <div class="card-header">
+        <h3>Change Username</h3>
+      </div>
+      <div class="card-body">
+        <form action="/username" method="post">
+          <p class="alert alert-secondary mb-3">
+            The username is used by SSH connections. It must be unique.
+            <br />
+            <strong>If you change the username, you should use the new username to connect to the server.</strong>
+          </p>
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" value="{{.user.Username}}" />
+          </div>
+          {{ range.errors }}
+          <div class="alert alert-danger mt-3" role="alert">{{.}}</div>
+          {{ end }}
+          <button type="submit" class="btn btn-primary">OK</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}

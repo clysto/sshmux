@@ -106,6 +106,15 @@ func (api *API) CreateUser(user User) error {
 	return api.db.Create(&user).Error
 }
 
+func (api *API) UpdateUser(user User) error {
+	return api.db.Save(&user).Error
+}
+
+func (api *API) UserExists(username string) bool {
+	var user User
+	return api.db.Where("username = ?", username).First(&user).Error == nil
+}
+
 func (api *API) Login(username, password string) (*User, error) {
 	var user User
 
