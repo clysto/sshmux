@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"html/template"
+	"net/http"
 	"path/filepath"
 	"sshmux/common"
 
@@ -22,6 +23,9 @@ import (
 
 //go:embed templates/*
 var templatesFS embed.FS
+
+//go:embed assets/*
+var assetsFS embed.FS
 
 func embeddedFH(config goview.Config, tmpl string) (string, error) {
 	path := filepath.Join(config.Root, tmpl)
@@ -89,6 +93,8 @@ func RunServer(cCtx *cli.Context) error {
 	app.HTMLRender = gv
 
 	app.Use(Auth())
+
+	app.StaticFS("/static", http.FS(assetsFS))
 
 	app.GET("/", RequireLogin(), Home)
 	app.GET("/login", Login)

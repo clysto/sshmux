@@ -357,6 +357,8 @@ func ChangeUserName(c *gin.Context) {
 			}
 		}
 
+		user = *api.GetUserByName(user.Username)
+
 		session.Set("user", user)
 		session.Save()
 
@@ -365,5 +367,10 @@ func ChangeUserName(c *gin.Context) {
 }
 
 func HandleNotFound(c *gin.Context) {
+	if strings.HasPrefix(c.Request.URL.Path, "/static") {
+		c.Status(http.StatusNotFound)
+		c.Abort()
+		return
+	}
 	ReturnError(c, http.StatusNotFound, "Page not found")
 }
