@@ -56,9 +56,9 @@ func (api *API) SearchTargets(q string) []Target {
 }
 
 func (api *API) CreateTarget(target Target) error {
-	r := regexp.MustCompile("^[a-zA-Z0-9_]+$")
+	r := regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 	if !r.MatchString(target.Name) {
-		return errors.New("target name must only contain alphanumeric characters and underscores")
+		return errors.New("target name must only contain alphanumeric characters, dashes, and underscores")
 	}
 	return api.db.Create(&target).Error
 }
@@ -68,9 +68,9 @@ func (api *API) DeleteTargetId(id int) error {
 }
 
 func (api *API) UpdateTarget(target Target) error {
-	r := regexp.MustCompile("^[a-zA-Z0-9_]+$")
+	r := regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 	if !r.MatchString(target.Name) {
-		return errors.New("target name must only contain alphanumeric characters and underscores")
+		return errors.New("target name must only contain alphanumeric characters, dashes, and underscores")
 	}
 	return api.db.Save(&target).Error
 }
