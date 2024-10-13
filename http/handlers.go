@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sshmux/common"
 	"strconv"
 	"strings"
@@ -57,7 +58,7 @@ func Login(c *gin.Context) {
 
 		user, err := api.Login(username, password)
 		if err != nil {
-			session.AddFlash("Invalid username or password", "error")
+			session.AddFlash("Invalid username or password.", "error")
 			session.Save()
 			c.Redirect(http.StatusFound, "/login")
 			return
@@ -334,9 +335,17 @@ func ChangeUserName(c *gin.Context) {
 		username := c.PostForm("username")
 		user.Username = username
 
+		r := regexp.MustCompile("^[a-zA-Z0-9_]{3,20}$")
+		if !r.MatchString(username) {
+			session.AddFlash("Username must be between 3 and 20 characters and only contain alphanumeric characters and underscore.", "error")
+			session.Save()
+			c.Redirect(http.StatusFound, "/username")
+			return
+		}
+
 		// check if username is already taken
 		if api.UserExists(username) {
-			session.AddFlash("Username is already taken", "error")
+			session.AddFlash("Username is already taken.", "error")
 			session.Save()
 			c.Redirect(http.StatusFound, "/username")
 			return
