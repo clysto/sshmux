@@ -1,0 +1,75 @@
+{{define "content"}}
+
+<div class="target-list">
+  <div class="input-group mb-3">
+    <input type="text" class="form-control" placeholder="Search..." aria-label="Search" />
+  </div>
+
+  <div class="list-group list-group-flush">
+    {{ range.targets }}
+    <button
+      class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+      data-bs-toggle="modal"
+      data-bs-target="#targetDetailModal"
+      data-name="{{.Name}}"
+      data-host="{{.Host}}"
+      data-port="{{.Port}}"
+      data-user="{{.User}}"
+    >
+      {{.Name}}
+      <span class="py-1 text-secondary">SSH</span>
+    </button>
+    {{else}}
+    <p class="list-group-item text-center">No targets found.</p>
+    {{ end }}
+  </div>
+</div>
+
+<div class="modal fade" id="targetDetailModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="targetName"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h5 class="mb-4">Connection instructions</h5>
+        <div class="form-floating mb-3">
+          <input class="form-control font-monospace" id="ssh-user" readonly />
+          <label>SSH User</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input class="form-control font-monospace" id="example-cmd" readonly />
+          <label>Example command</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const targetDetailModal = document.getElementById('targetDetailModal');
+  targetDetailModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const name = button.getAttribute('data-name');
+    const host = button.getAttribute('data-host');
+    const port = button.getAttribute('data-port');
+    const user = button.getAttribute('data-user');
+
+    const modalTitle = targetDetailModal.querySelector('.modal-title');
+    modalTitle.textContent = name;
+
+    {{if .user}}
+    const username = '{{.user.Username}}';
+    {{else}}
+    const username = '<username>';
+    {{end}}
+
+    const sshUser = targetDetailModal.querySelector('#ssh-user');
+    sshUser.value = `${username}:${name}`;
+    const exampleCmd = targetDetailModal.querySelector('#example-cmd');
+    exampleCmd.value = `ssh ${username}:${name}@{{.sshpiperHost}} -p {{.sshpiperPort}}`;
+  });
+</script>
+
+{{ end }}

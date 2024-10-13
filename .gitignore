@@ -1,3 +1,6 @@
 *.db
 /sshpiperkey
 /build
+/sshpiperd
+/sshmux
+/config.toml

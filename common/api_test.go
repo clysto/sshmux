@@ -1,4 +1,4 @@
-package sshmux
+package common
 
 import "testing"
 
@@ -20,8 +20,8 @@ func TestCreatePubkey(t *testing.T) {
 	api, _ := NewAPI("test.db")
 	pubkey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEouP9wQoLlQHpoJkaaLECOXoOBmJYZfGtFihWpiCmn2 maoyachen@maoyachendeMacBook-Pro.local"
 	err := api.CreatePubkey(Pubkey{
-		User: "maoyachen",
-		Key:  pubkey,
+		UserId: 1,
+		Key:    pubkey,
 	})
 	if err != nil {
 		t.Errorf("CreatePubkey failed: %v", err)

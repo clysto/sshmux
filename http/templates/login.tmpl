@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="d-flex flex-column justify-content-center align-items-center h-100">
+  <div class="card shadow-sm p-4" style="max-width: 400px; width: 100%">
+    <h1 class="h3 mb-3 text-center">Welcome</h1>
+    <form action="/login" method="POST">
+      <div class="form-floating mb-3">
+        <input type="text" id="username" name="username" class="form-control" required />
+        <label for="username" class="form-label">Username</label>
+      </div>
+      <div class="form-floating mb-3">
+        <input type="password" id="password" name="password" class="form-control" required />
+        <label for="password" class="form-label">Password</label>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">
+          Login
+          <i class="ms-2 bi bi-arrow-right"></i>
+        </button>
+      </div>
+      {{ range.errors }}
+      <div class="alert alert-danger mt-3" role="alert">{{.}}</div>
+      {{ end }}
+    </form>
+    {{ if .ssos }}
+    <div class="d-grid mt-4">
+      {{ range.ssos }}
+      <a href="{{ .url }}" class="btn btn-secondary mt-2">{{ .label }}</a>
+      {{ end }}
+    </div>
+    {{ end }}
+  </div>
+</div>
+{{ end }}

@@ -1,10 +1,10 @@
-package main
+package sshpiperplugin
 
 import (
 	"bytes"
 	"fmt"
 	"os"
-	"sshmux/sshmux"
+	"sshmux/common"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -14,7 +14,7 @@ import (
 )
 
 type plugin struct {
-	api        *sshmux.API
+	api        *common.API
 	privateKey []byte
 }
 
@@ -23,7 +23,7 @@ func newSshmuxPlugin(privayeKeyFile string, dbPath string) (*plugin, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key file [%v]: %v", privayeKeyFile, err)
 	}
-	api, err := sshmux.NewAPI(dbPath)
+	api, err := common.NewAPI(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sshmux api: %v", err)
 	}
@@ -58,7 +58,7 @@ func (p *plugin) findAndCreateUpstream(conn libplugin.ConnMetadata, _ string, pu
 		return nil, fmt.Errorf("no matching target for target name [%v] found", targetName)
 	}
 
-	pubkeys := p.api.GetPubkeysByUser(user)
+	pubkeys := p.api.GetPubkeysByUsername(user)
 	for _, pubkey := range pubkeys {
 		authedPubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubkey.Key))
 		if err != nil {

@@ -1,7 +1,10 @@
-package sshmux
+package common
 
 import (
+	"errors"
+
 	"github.com/glebarez/sqlite"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -17,10 +20,7 @@ func NewAPI(dbPath string) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&Target{}, &Pubkey{}); err != nil {
-		return nil, err
-	}
-	if err := db.AutoMigrate(&Pubkey{}); err != nil {
+	if err := db.AutoMigrate(&Target{}, &Pubkey{}, &SSOCredential{}, &User{}); err != nil {
 		return nil, err
 	}
 	return &API{db: db}, nil
@@ -60,9 +60,15 @@ func (api *API) UpdateTarget(target Target) error {
 	return api.db.Save(&target).Error
 }
 
-func (api *API) GetPubkeysByUser(user string) []Pubkey {
+func (api *API) GetPubkeysByUserID(userID uint) []Pubkey {
 	var pubkeys []Pubkey
-	api.db.Where("user = ?", user).Find(&pubkeys)
+	api.db.Where("user_id = ?", userID).Find(&pubkeys)
+	return pubkeys
+}
+
+func (api *API) GetPubkeysByUsername(username string) []Pubkey {
+	var pubkeys []Pubkey
+	api.db.Joins("JOIN users ON users.id = pubkeys.user_id").Where("users.username = ?", username).Find(&pubkeys)
 	return pubkeys
 }
 
@@ -80,4 +86,39 @@ func (api *API) GetPubkeyById(id int) *Pubkey {
 		return nil
 	}
 	return &pubkey
+}
+
+func (api *API) GetUserBySSO(providerName, subject string) *User {
+	var user User
+
+	err := api.db.Joins("JOIN sso_credentials ON sso_credentials.user_id = users.id").
+		Where("sso_credentials.provider_name = ? AND sso_credentials.subject = ?", providerName, subject).
+		First(&user).Error
+
+	if err != nil {
+		return nil
+	}
+
+	return &user
+}
+
+func (api *API) CreateUser(user User) error {
+	return api.db.Create(&user).Error
+}
+
+func (api *API) Login(username, password string) (*User, error) {
+	var user User
+
+	if err := api.db.Where("username = ?", username).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("invalid password")
+	}
+
+	return &user, nil
 }
