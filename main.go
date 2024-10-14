@@ -18,11 +18,11 @@ func main() {
 		ErrWriter: os.Stderr,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "config",
-				Aliases:     []string{"c"},
-				Usage:       "toml config file",
-				DefaultText: "/etc/sshmux.toml",
-				Required:    true,
+				Name:     "config",
+				Aliases:  []string{"c"},
+				Usage:    "toml config file",
+				Value:    "/etc/sshmux.toml",
+				Required: true,
 			},
 		},
 		Commands: []*cli.Command{
