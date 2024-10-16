@@ -99,5 +99,8 @@ func (p *plugin) banner(conn libplugin.ConnMetadata) string {
 	if target == nil {
 		return fmt.Sprintf("no matching target for %v.\n", targetName)
 	}
+	if !common.TestSSHConnection(*target) {
+		return fmt.Sprintf("target %v is not reachable.\n", targetName)
+	}
 	return ""
 }

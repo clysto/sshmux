@@ -1,8 +1,13 @@
 package common
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"net"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"golang.org/x/crypto/bcrypt"
@@ -157,4 +162,28 @@ func (api *API) Login(username, password string) (*User, error) {
 	}
 
 	return &user, nil
+}
+
+func TestSSHConnection(target Target) bool {
+	timeout := 5 * time.Second
+	address := net.JoinHostPort(target.Host, fmt.Sprint(target.Port))
+
+	conn, err := net.DialTimeout("tcp", address, timeout)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+
+	conn.SetReadDeadline(time.Now().Add(timeout))
+	reader := bufio.NewReader(conn)
+	serverResponse, err := reader.ReadString('\n')
+
+	if err != nil {
+		return false
+	}
+	if strings.HasPrefix(serverResponse, "SSH") {
+		return true
+	}
+
+	return false
 }
