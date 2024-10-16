@@ -85,3 +85,19 @@ func (p *plugin) verifyHostKey(_ libplugin.ConnMetadata, _, _ string, _ []byte) 
 	// trust all host key
 	return nil
 }
+
+func (p *plugin) banner(conn libplugin.ConnMetadata) string {
+	sshuser := conn.User()
+	targetName := ""
+	seps := strings.SplitN(sshuser, ":", 2)
+	if len(seps) == 2 {
+		targetName = seps[1]
+	} else {
+		return "ssh user should be in the format of <username>:<target>.\n"
+	}
+	target := p.api.GetTargetByName(targetName)
+	if target == nil {
+		return fmt.Sprintf("no matching target for %v.\n", targetName)
+	}
+	return ""
+}
