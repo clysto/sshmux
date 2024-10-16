@@ -38,14 +38,14 @@
         <h5 class="mb-4">Connection instructions</h5>
         <div class="d-flex form-floating mb-3">
           <input class="form-control font-monospace" id="ssh-user" readonly />
-          <button class="copy-btn btn btn-link btn-lg" id="ssh-user-copy" data-text="">
+          <button class="copy-btn btn btn-link btn-lg" data-copy-target="#ssh-user">
             <i class="bi bi-clipboard"></i>
           </button>
           <label>SSH User</label>
         </div>
         <div class="d-flex form-floating mb-3">
           <input class="form-control font-monospace" id="example-cmd" readonly />
-          <button class="copy-btn btn btn-link btn-lg" id="example-cmd-copy" data-text="">
+          <button class="copy-btn btn btn-link btn-lg" data-copy-target="#example-cmd">
             <i class="bi bi-clipboard"></i>
           </button>
           <label>Example command</label>
@@ -77,18 +77,18 @@
     sshUser.value = `${username}:${name}`;
     const exampleCmd = targetDetailModal.querySelector('#example-cmd');
     exampleCmd.value = `ssh ${username}:${name}@{{.sshpiperHost}} -p {{.sshpiperPort}}`;
-    const sshUserCopy = targetDetailModal.querySelector('#ssh-user-copy');
-    sshUserCopy.setAttribute('data-text', `${username}:${name}`);
-    const exampleCmdCopy = targetDetailModal.querySelector('#example-cmd-copy');
-    exampleCmdCopy.setAttribute('data-text', `ssh ${username}:${name}@{{.sshpiperHost}} -p {{.sshpiperPort}}`);
   });
 
   const copyBtns = document.querySelectorAll('.copy-btn');
   copyBtns.forEach((btn) => {
     btn.addEventListener('click', (event) => {
       const btn = event.currentTarget;
-      const text = btn.getAttribute('data-text');
-      navigator.clipboard.writeText(text);
+      const input = document.querySelector(btn.getAttribute('data-copy-target'));
+
+      input.select();
+      document.execCommand('copy');
+      input.setSelectionRange(0, 0);
+
       btn.innerHTML = '<i class="bi bi-clipboard-check-fill"></i>';
       setTimeout(() => {
         btn.innerHTML = '<i class="bi bi-clipboard"></i>';
