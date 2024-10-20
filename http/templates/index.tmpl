@@ -10,7 +10,7 @@
   <div class="list-group list-group-flush">
     {{ range.targets }}
     <button
-      class="list-group-item list-group-item-dark list-group-item-action d-flex justify-content-between align-items-center"
+      class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
       data-bs-toggle="modal"
       data-bs-target="#targetDetailModal"
       data-name="{{.Name}}"
@@ -50,6 +50,13 @@
           </button>
           <label>Example command</label>
         </div>
+        <div class="d-flex form-floating">
+          <textarea id="example-config" class="form-control font-monospace" style="height: 7.5rem;" readonly></textarea>
+          <button class="copy-btn btn btn-link btn-lg" data-copy-target="#example-config">
+            <i class="bi bi-clipboard"></i>
+          </button>
+          <label>SSH config</label>
+        </div>
       </div>
     </div>
   </div>
@@ -77,6 +84,11 @@
     sshUser.value = `${username}:${name}`;
     const exampleCmd = targetDetailModal.querySelector('#example-cmd');
     exampleCmd.value = `ssh ${username}:${name}@{{.sshpiperHost}} -p {{.sshpiperPort}}`;
+    const exampleConfig = targetDetailModal.querySelector('#example-config');
+    exampleConfig.innerHTML = `Host ${name}
+    HostName {{.sshpiperHost}}
+    Port {{.sshpiperPort}}
+    User ${username}:${name}`;
   });
 
   const copyBtns = document.querySelectorAll('.copy-btn');
