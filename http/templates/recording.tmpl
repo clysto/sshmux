@@ -1,0 +1,36 @@
+{{define "content"}}
+<div>
+  <h2 class="h4 mb-0">{{ .recording.User.Username }} on {{ .recording.Target.Name }}</h2>
+  <hr />
+
+  <select class="form-select mb-2" id="channel-select">
+    {{
+      range.channels
+    }}
+    <option value="{{.}}">{{.}}</option>
+    {{
+      end
+    }}
+  </select>
+
+  <div id="recording"></div>
+
+  <script src="/static/assets/asciinema-player.min.js"></script>
+  <script>
+    const player = AsciinemaPlayer.create(
+      '/recordings/cast/{{.recording.RecordID}}/{{index .channels 0}}',
+      document.getElementById('recording')
+    );
+
+    const channelSelect = document.getElementById('channel-select');
+    channelSelect.addEventListener('change', (event) => {
+      const channel = event.target.value;
+      player.dispose();
+      AsciinemaPlayer.create(
+        `/recordings/cast/{{.recording.RecordID}}/${channel}`,
+        document.getElementById('recording')
+      );
+    });
+  </script>
+</div>
+{{ end }}

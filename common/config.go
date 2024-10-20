@@ -20,6 +20,7 @@ type Config struct {
 	DB            string      `toml:"db"`
 	PrivateKey    string      `toml:"private_key"`
 	SessionSecret string      `toml:"session_secret"`
+	RecordingsDir string      `toml:"recordings_dir"`
 }
 
 func LoadConfig(path string) (*Config, error) {

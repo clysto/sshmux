@@ -41,6 +41,7 @@ func RunServer(cCtx *cli.Context) error {
 	}
 	sshpiperHost = config.SSHHost
 	sshpiperPort = config.SSHPort
+	recordingsDir = config.RecordingsDir
 
 	// Config SSO providers
 	for _, ssoConfig := range config.SSOProviders {
@@ -103,6 +104,8 @@ func RunServer(cCtx *cli.Context) error {
 	app.GET("/account", RequireLogin(), Account)
 	app.GET("/auth/callback", AuthCallback)
 	app.GET("/username", ChangeUserName)
+	app.GET("/recordings/:id", RequireAdmin(), RecordingPage)
+	app.GET("/recordings/cast/:id/:channel", RequireAdmin(), HandleRecording)
 
 	app.POST("/login", Login)
 	app.POST("/pubkey", RequireLogin(), CreatePubkey)

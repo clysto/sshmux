@@ -2,21 +2,37 @@ package sshpiperplugin
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"sshmux/common"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/tg123/sshpiper/libplugin"
 	"golang.org/x/crypto/ssh"
 )
 
+var errUserFormat = errors.New("invalid ssh user format")
+var errTargetNotFound = errors.New("no matching target found")
+
 type plugin struct {
 	api        *common.API
 	privateKey []byte
+}
+
+func (p *plugin) parseUserAndTarget(sshuser string) (string, *common.Target, error) {
+	seps := strings.SplitN(sshuser, ":", 2)
+	if len(seps) != 2 {
+		return "", nil, errUserFormat
+	}
+	user := seps[0]
+	targetName := seps[1]
+	target := p.api.GetTargetByName(targetName)
+	if target == nil {
+		return "", nil, errTargetNotFound
+	}
+	return user, target, nil
 }
 
 func newSshmuxPlugin(privayeKeyFile string, dbPath string) (*plugin, error) {
@@ -44,19 +60,10 @@ func (p *plugin) supportedMethods() ([]string, error) {
 func (p *plugin) findAndCreateUpstream(conn libplugin.ConnMetadata, _ string, publicKey []byte) (*libplugin.Upstream, error) {
 	sshuser := conn.User()
 
-	seps := strings.SplitN(sshuser, ":", 2)
-	if len(seps) != 2 {
-		return nil, fmt.Errorf("invalid ssh user [%v]", sshuser)
-	}
-	user := seps[0]
-	targetName := seps[1]
-	log.Infof("user [%v] target [%v]", user, targetName)
+	user, target, err := p.parseUserAndTarget(sshuser)
 
-	target := p.api.GetTargetByName(targetName)
-
-	if target == nil {
-		log.Warnf("no matching target for target name [%v] found", targetName)
-		return nil, fmt.Errorf("no matching target for target name [%v] found", targetName)
+	if err != nil {
+		return nil, err
 	}
 
 	pubkeys := p.api.GetPubkeysByUsername(user)
@@ -88,19 +95,45 @@ func (p *plugin) verifyHostKey(_ libplugin.ConnMetadata, _, _ string, _ []byte) 
 
 func (p *plugin) banner(conn libplugin.ConnMetadata) string {
 	sshuser := conn.User()
-	targetName := ""
-	seps := strings.SplitN(sshuser, ":", 2)
-	if len(seps) == 2 {
-		targetName = seps[1]
-	} else {
-		return "ssh user should be in the format of <username>:<target>.\n"
+
+	_, target, err := p.parseUserAndTarget(sshuser)
+
+	if err != nil {
+		if errors.Is(err, errUserFormat) {
+			return "ssh user should be in the format of <username>:<target>.\n"
+		} else if errors.Is(err, errTargetNotFound) {
+			return "no matching target.\n"
+		} else {
+			return ""
+		}
 	}
-	target := p.api.GetTargetByName(targetName)
-	if target == nil {
-		return fmt.Sprintf("no matching target for %v.\n", targetName)
-	}
+
 	if !common.TestSSHConnection(*target) {
-		return fmt.Sprintf("target %v is not reachable.\n", targetName)
+		return fmt.Sprintf("target %v is not reachable.\n", target.Name)
 	}
 	return ""
+}
+
+func (p *plugin) pipeEnd(conn libplugin.ConnMetadata, _ error) {
+	sshuser := conn.User()
+
+	username, target, err := p.parseUserAndTarget(sshuser)
+
+	if err != nil {
+		return
+	}
+
+	user := p.api.GetUserByName(username)
+
+	if user == nil {
+		return
+	}
+
+	recording := common.Recording{
+		UserID:   user.ID,
+		TargetID: target.ID,
+		RecordID: conn.UniqueID(),
+	}
+
+	p.api.CreateRecording(recording)
 }

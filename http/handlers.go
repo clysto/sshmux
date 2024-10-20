@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path"
 	"regexp"
 	"sshmux/common"
 	"strconv"
@@ -178,11 +180,6 @@ func AuthCallback(c *gin.Context) {
 		session.Set("creatingUser", *user)
 		session.Save()
 		c.Redirect(http.StatusFound, "/username")
-		// err := api.CreateUser(*user)
-		// if err != nil {
-		// 	ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create user: %v", err))
-		// 	return
-		// }
 	}
 
 	session.Set("user", *user)
@@ -196,7 +193,7 @@ func CreatePubkey(c *gin.Context) {
 	key := c.PostForm("publicKey")
 
 	err := api.CreatePubkey(common.Pubkey{
-		UserId: user.ID,
+		UserID: user.ID,
 		Key:    key,
 	})
 	if err != nil {
@@ -216,7 +213,7 @@ func DeletePubkey(c *gin.Context) {
 		return
 	}
 	key := api.GetPubkeyById(id)
-	if key == nil || key.UserId != user.ID {
+	if key == nil || key.UserID != user.ID {
 		ReturnError(c, http.StatusBadRequest, "Invalid pubkey ID")
 		return
 	}
@@ -229,9 +226,81 @@ func DeletePubkey(c *gin.Context) {
 }
 
 func Admin(c *gin.Context) {
+	page, err := strconv.Atoi(c.Query("page"))
+	if err != nil {
+		page = 1
+	}
+
+	// 获取搜索查询参数
+	user := c.Query("user")
+	target := c.Query("target")
+
+	// 获取时间范围参数
+	var after, before *time.Time
+	afterStr := c.Query("after")
+	beforeStr := c.Query("before")
+
+	// 解析时间字符串为 time.Time 类型
+	if afterStr != "" {
+		parsedAfter, err := time.Parse("2006-01-02", afterStr)
+		if err == nil {
+			after = &parsedAfter
+		} else {
+			afterStr = ""
+		}
+	}
+
+	if beforeStr != "" {
+		parsedBefore, err := time.Parse("2006-01-02", beforeStr)
+		if err == nil {
+			before = &parsedBefore
+		} else {
+			beforeStr = ""
+		}
+	}
+
 	targets := api.ListTargets()
+	recordings, hasNext := api.SearchRecordings(15, page, user, target, after, before)
+
 	ReturnHTML(c, "admin", gin.H{
-		"targets": targets,
+		"targets":    targets,
+		"recordings": recordings,
+		"hasPrev":    page > 1,
+		"hasNext":    hasNext,
+		"prevPage":   page - 1,
+		"nextPage":   page + 1,
+		"search": gin.H{
+			"user":   user,
+			"target": target,
+			"after":  afterStr,
+			"before": beforeStr,
+		},
+	})
+}
+
+func RecordingPage(c *gin.Context) {
+	id := c.Param("id")
+	recording := api.GetRecordingById(id)
+	dir := path.Join(recordingsDir, id)
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Failed to list channel files")
+		return
+	}
+	var channels []string
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		channels = append(channels, file.Name())
+	}
+	if recording == nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid recording ID")
+		return
+	}
+	ReturnHTML(c, "recording", gin.H{
+		"recording": recording,
+		"channels":  channels,
 	})
 }
 
@@ -382,4 +451,10 @@ func HandleNotFound(c *gin.Context) {
 		return
 	}
 	ReturnError(c, http.StatusNotFound, "Page not found")
+}
+
+func HandleRecording(c *gin.Context) {
+	id := c.Param("id")
+	channel := c.Param("channel")
+	http.ServeFile(c.Writer, c.Request, path.Join(recordingsDir, id, channel))
 }

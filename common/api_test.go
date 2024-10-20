@@ -20,7 +20,7 @@ func TestCreatePubkey(t *testing.T) {
 	api, _ := NewAPI("test.db")
 	pubkey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEouP9wQoLlQHpoJkaaLECOXoOBmJYZfGtFihWpiCmn2 maoyachen@maoyachendeMacBook-Pro.local"
 	err := api.CreatePubkey(Pubkey{
-		UserId: 1,
+		UserID: 1,
 		Key:    pubkey,
 	})
 	if err != nil {

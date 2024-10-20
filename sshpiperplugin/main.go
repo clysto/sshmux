@@ -34,7 +34,8 @@ func StartPlugin(cCtx *cli.Context) error {
 		VerifyHostKeyCallback: func(conn libplugin.ConnMetadata, hostname, netaddr string, key []byte) error {
 			return plugin.verifyHostKey(conn, hostname, netaddr, key)
 		},
-		BannerCallback: plugin.banner,
+		BannerCallback:    plugin.banner,
+		PipeErrorCallback: plugin.pipeEnd,
 	}
 
 	p, err := libplugin.NewFromStdio(*sshPiperPluginConfig)

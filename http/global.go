@@ -21,3 +21,5 @@ var ssoProviders []*SsoProvider
 
 var sshpiperHost string
 var sshpiperPort int
+
+var recordingsDir string

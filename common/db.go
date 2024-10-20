@@ -32,7 +32,16 @@ type Target struct {
 
 type Pubkey struct {
 	gorm.Model
-	UserId uint
+	UserID uint
 	Key    string
 	UsedAt time.Time
+}
+
+type Recording struct {
+	gorm.Model
+	UserID   uint
+	TargetID uint
+	RecordID string
+	User     User
+	Target   Target
 }

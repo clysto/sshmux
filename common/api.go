@@ -26,7 +26,7 @@ func NewAPI(dbPath string) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&Target{}, &Pubkey{}, &SSOCredential{}, &User{}); err != nil {
+	if err := db.AutoMigrate(&Target{}, &Pubkey{}, &SSOCredential{}, &User{}, &Recording{}); err != nil {
 		return nil, err
 	}
 	return &API{db: db}, nil
@@ -186,4 +186,63 @@ func TestSSHConnection(target Target) bool {
 	}
 
 	return false
+}
+
+func (api *API) CreateRecording(recording Recording) error {
+	return api.db.Create(&recording).Error
+}
+
+func (api *API) ListRecordings(pageSize int, pageNum int) ([]Recording, bool) {
+	var recordings []Recording
+
+	api.db.Preload("User").Preload("Target").
+		Limit(pageSize).
+		Offset(pageSize * (pageNum - 1)).
+		Order("created_at desc").
+		Find(&recordings)
+
+	var totalRecordingsCount int64
+	api.db.Model(&Recording{}).Count(&totalRecordingsCount)
+
+	hasMore := (pageNum * pageSize) < int(totalRecordingsCount)
+
+	return recordings, hasMore
+}
+
+func (api *API) SearchRecordings(pageSize int, pageNum int, user string, target string, after *time.Time, before *time.Time) ([]Recording, bool) {
+	var recordings []Recording
+	query := api.db.Joins("User").Joins("Target")
+
+	if after != nil {
+		query = query.Where("recordings.created_at >= ?", *after)
+	}
+
+	if before != nil {
+		query = query.Where("recordings.created_at <= ?", *before)
+	}
+
+	if user != "" {
+		query = query.Where("User__username LIKE ?", "%"+user+"%")
+	}
+
+	if target != "" {
+		query = query.Where("Target__name LIKE ?", "%"+target+"%")
+	}
+
+	query.Limit(pageSize).Offset(pageSize * (pageNum - 1)).Order("recordings.created_at desc").Find(&recordings)
+
+	var totalRecordingsCount int64
+	query.Model(&Recording{}).Count(&totalRecordingsCount)
+
+	hasMore := (pageNum * pageSize) < int(totalRecordingsCount)
+
+	return recordings, hasMore
+}
+
+func (api *API) GetRecordingById(id string) *Recording {
+	var recording Recording
+	if api.db.Preload("User").Preload("Target").First(&recording, "record_id = ?", id).Error != nil {
+		return nil
+	}
+	return &recording
 }
