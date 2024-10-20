@@ -1,6 +1,8 @@
 package common
 
-import "github.com/BurntSushi/toml"
+import (
+	"github.com/BurntSushi/toml"
+)
 
 type SSOConfig struct {
 	Name         string   `toml:"name"`
@@ -12,15 +14,16 @@ type SSOConfig struct {
 }
 
 type Config struct {
-	Port          int         `toml:"http_port"`
-	SSHPort       int         `toml:"ssh_port"`
-	SSHHost       string      `toml:"ssh_host"`
-	ExternalURL   string      `toml:"external_url"`
-	SSOProviders  []SSOConfig `toml:"sso_providers"`
-	DB            string      `toml:"db"`
-	PrivateKey    string      `toml:"private_key"`
-	SessionSecret string      `toml:"session_secret"`
-	RecordingsDir string      `toml:"recordings_dir"`
+	Port                    int         `toml:"http_port"`
+	SSHPort                 int         `toml:"ssh_port"`
+	SSHHost                 string      `toml:"ssh_host"`
+	ExternalURL             string      `toml:"external_url"`
+	SSOProviders            []SSOConfig `toml:"sso_providers"`
+	DB                      string      `toml:"db"`
+	PrivateKey              string      `toml:"private_key"`
+	SessionSecret           string      `toml:"session_secret"`
+	RecordingsDir           string      `toml:"recordings_dir"`
+	RecordingsRetentionDays int         `toml:"recordings_retention_days"`
 }
 
 func LoadConfig(path string) (*Config, error) {

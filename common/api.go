@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -245,4 +247,14 @@ func (api *API) GetRecordingById(id string) *Recording {
 		return nil
 	}
 	return &recording
+}
+
+func (api *API) DeleteOldRecordings(before time.Time, recorddir string) error {
+	var recordings []Recording
+	api.db.Where("created_at < ?", before).Find(&recordings)
+	for _, recording := range recordings {
+		f := path.Join(recorddir, recording.RecordID)
+		_ = os.RemoveAll(f)
+	}
+	return api.db.Where("created_at < ?", before).Delete(&Recording{}).Error
 }

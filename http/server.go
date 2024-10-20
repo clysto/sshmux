@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sshmux/common"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/dustin/go-humanize"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
+	"github.com/robfig/cron/v3"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/oauth2"
 )
@@ -69,6 +71,13 @@ func RunServer(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Start the cron job
+	c := cron.New()
+	c.AddFunc("@daily", func() {
+		api.DeleteOldRecordings(time.Now().AddDate(0, 0, -config.RecordingsRetentionDays), config.RecordingsDir)
+	})
+	c.Start()
 
 	// Start the web server
 	app := gin.Default()
