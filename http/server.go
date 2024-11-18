@@ -122,6 +122,7 @@ func RunServer(cCtx *cli.Context) error {
 	app.POST("/target", RequireAdmin(), CreateTarget)
 	app.POST("/target/delete/:id", RequireAdmin(), DeleteTarget)
 	app.POST("/target/update/:id", RequireAdmin(), UpdateTarget)
+	app.POST("/user/delete/:id", RequireAdmin(), DeleteUser)
 	app.POST("/username", ChangeUserName)
 
 	app.NoRoute(HandleNotFound)

@@ -226,56 +226,81 @@ func DeletePubkey(c *gin.Context) {
 }
 
 func Admin(c *gin.Context) {
-	page, err := strconv.Atoi(c.Query("page"))
-	if err != nil {
-		page = 1
+	tab := c.Query("tab")
+
+	if tab != "recordings" && tab != "targets" && tab != "users" {
+		tab = "targets"
 	}
 
-	// 获取搜索查询参数
-	user := c.Query("user")
-	target := c.Query("target")
-
-	// 获取时间范围参数
-	var after, before *time.Time
-	afterStr := c.Query("after")
-	beforeStr := c.Query("before")
-
-	// 解析时间字符串为 time.Time 类型
-	if afterStr != "" {
-		parsedAfter, err := time.Parse("2006-01-02", afterStr)
-		if err == nil {
-			after = &parsedAfter
-		} else {
-			afterStr = ""
+	switch tab {
+	case "recordings":
+		page, err := strconv.Atoi(c.Query("page"))
+		if err != nil {
+			page = 1
 		}
-	}
+		// 获取搜索查询参数
+		user := c.Query("user")
+		target := c.Query("target")
+		// 获取时间范围参数
+		var after, before *time.Time
+		afterStr := c.Query("after")
+		beforeStr := c.Query("before")
 
-	if beforeStr != "" {
-		parsedBefore, err := time.Parse("2006-01-02", beforeStr)
-		if err == nil {
-			before = &parsedBefore
-		} else {
-			beforeStr = ""
+		// 解析时间字符串为 time.Time 类型
+		if afterStr != "" {
+			parsedAfter, err := time.Parse("2006-01-02", afterStr)
+			if err == nil {
+				after = &parsedAfter
+			} else {
+				afterStr = ""
+			}
 		}
+
+		if beforeStr != "" {
+			parsedBefore, err := time.Parse("2006-01-02", beforeStr)
+			if err == nil {
+				before = &parsedBefore
+			} else {
+				beforeStr = ""
+			}
+		}
+
+		recordings, hasNext := api.SearchRecordings(30, page, user, target, after, before)
+		ReturnHTML(c, "admin", gin.H{
+			"recordings": recordings,
+			"hasPrev":    page > 1,
+			"hasNext":    hasNext,
+			"prevPage":   page - 1,
+			"nextPage":   page + 1,
+			"search": gin.H{
+				"user":   user,
+				"target": target,
+				"after":  afterStr,
+				"before": beforeStr,
+			},
+			"tab": tab,
+		})
+	case "targets":
+		targets := api.ListTargets()
+		ReturnHTML(c, "admin", gin.H{
+			"targets": targets,
+			"tab":     tab,
+		})
+	case "users":
+		page, err := strconv.Atoi(c.Query("page"))
+		if err != nil {
+			page = 1
+		}
+		users, hasNext := api.ListUsers(30, page)
+		ReturnHTML(c, "admin", gin.H{
+			"tab":      tab,
+			"users":    users,
+			"hasPrev":  page > 1,
+			"hasNext":  hasNext,
+			"prevPage": page - 1,
+			"nextPage": page + 1,
+		})
 	}
-
-	targets := api.ListTargets()
-	recordings, hasNext := api.SearchRecordings(15, page, user, target, after, before)
-
-	ReturnHTML(c, "admin", gin.H{
-		"targets":    targets,
-		"recordings": recordings,
-		"hasPrev":    page > 1,
-		"hasNext":    hasNext,
-		"prevPage":   page - 1,
-		"nextPage":   page + 1,
-		"search": gin.H{
-			"user":   user,
-			"target": target,
-			"after":  afterStr,
-			"before": beforeStr,
-		},
-	})
 }
 
 func RecordingPage(c *gin.Context) {
@@ -374,7 +399,26 @@ func DeleteTarget(c *gin.Context) {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete target: %v", err))
 		return
 	}
-	c.Redirect(http.StatusFound, "/admin")
+	c.Redirect(http.StatusFound, "/admin?tab=targets")
+}
+
+func DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+	user := api.GetUserById(id)
+	if user == nil || user.IsAdmin {
+		ReturnError(c, http.StatusBadRequest, "Cannot delete user")
+		return
+	}
+	err = api.DeleteUserById(id)
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete user: %v", err))
+		return
+	}
+	c.Redirect(http.StatusFound, "/admin?tab=users")
 }
 
 func ChangeUserName(c *gin.Context) {

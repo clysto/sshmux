@@ -1,5 +1,5 @@
 *.db
-/sshpiperkey
+/host_key
 /build
 /sshpiperd
 /sshmux

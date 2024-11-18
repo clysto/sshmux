@@ -71,7 +71,7 @@ func (api *API) CreateTarget(target Target) error {
 }
 
 func (api *API) DeleteTargetId(id int) error {
-	return api.db.Where("id = ?", id).Delete(&Target{}).Error
+	return api.db.Unscoped().Where("id = ?", id).Delete(&Target{}).Error
 }
 
 func (api *API) UpdateTarget(target Target) error {
@@ -213,7 +213,7 @@ func (api *API) ListRecordings(pageSize int, pageNum int) ([]Recording, bool) {
 
 func (api *API) SearchRecordings(pageSize int, pageNum int, user string, target string, after *time.Time, before *time.Time) ([]Recording, bool) {
 	var recordings []Recording
-	query := api.db.Joins("User").Joins("Target")
+	query := api.db.Model(&Recording{}).Joins("User").Joins("Target")
 
 	if after != nil {
 		query = query.Where("recordings.created_at >= ?", *after)
@@ -231,10 +231,9 @@ func (api *API) SearchRecordings(pageSize int, pageNum int, user string, target 
 		query = query.Where("Target__name LIKE ?", "%"+target+"%")
 	}
 
-	query.Limit(pageSize).Offset(pageSize * (pageNum - 1)).Order("recordings.created_at desc").Find(&recordings)
-
 	var totalRecordingsCount int64
-	query.Model(&Recording{}).Count(&totalRecordingsCount)
+	query.Count(&totalRecordingsCount)
+	query.Limit(pageSize).Offset(pageSize * (pageNum - 1)).Order("recordings.created_at desc").Find(&recordings)
 
 	hasMore := (pageNum * pageSize) < int(totalRecordingsCount)
 
@@ -256,5 +255,34 @@ func (api *API) DeleteOldRecordings(before time.Time, recorddir string) error {
 		f := path.Join(recorddir, recording.RecordID)
 		_ = os.RemoveAll(f)
 	}
-	return api.db.Where("created_at < ?", before).Delete(&Recording{}).Error
+	return api.db.Unscoped().Where("created_at < ?", before).Delete(&Recording{}).Error
+}
+
+func (api *API) ListUsers(pageSize int, pageNum int) ([]User, bool) {
+	var users []User
+
+	api.db.Limit(pageSize).
+		Offset(pageSize * (pageNum - 1)).
+		Order("created_at asc").
+		Preload("SSOCredentials").
+		Find(&users)
+
+	var totalUsersCount int64
+	api.db.Model(&User{}).Count(&totalUsersCount)
+
+	hasMore := (pageNum * pageSize) < int(totalUsersCount)
+
+	return users, hasMore
+}
+
+func (api *API) DeleteUserById(id int) error {
+	return api.db.Where("id = ?", id).Delete(&User{}).Error
+}
+
+func (api *API) GetUserById(id int) *User {
+	var user User
+	if api.db.Preload("SSOCredentials").First(&user, id).Error != nil {
+		return nil
+	}
+	return &user
 }
