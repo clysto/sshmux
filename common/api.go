@@ -224,11 +224,11 @@ func (api *API) SearchRecordings(pageSize int, pageNum int, user string, target 
 	}
 
 	if user != "" {
-		query = query.Where("User__username LIKE ?", "%"+user+"%")
+		query = query.Where("User.username LIKE ?", "%"+user+"%")
 	}
 
 	if target != "" {
-		query = query.Where("Target__name LIKE ?", "%"+target+"%")
+		query = query.Where("Target.name LIKE ?", "%"+target+"%")
 	}
 
 	var totalRecordingsCount int64
