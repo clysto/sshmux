@@ -77,6 +77,10 @@ func RunServer(cCtx *cli.Context) error {
 	c.AddFunc("@daily", func() {
 		api.DeleteOldRecordings(time.Now().AddDate(0, 0, -config.RecordingsRetentionDays), config.RecordingsDir)
 	})
+	api.CheckTargetHealth(&targetHealths)
+	c.AddFunc("*/10 * * * *", func() {
+		api.CheckTargetHealth(&targetHealths)
+	})
 	c.Start()
 
 	// Start the web server
@@ -95,6 +99,16 @@ func RunServer(cCtx *cli.Context) error {
 		DisableCache: true,
 		Funcs: template.FuncMap{
 			"duration": humanize.Time,
+			"sub": func(a, b int) int {
+				return a - b
+			},
+			"seq": func(n int) []int {
+				seq := make([]int, n)
+				for i := range seq {
+					seq[i] = i
+				}
+				return seq
+			},
 		},
 	})
 

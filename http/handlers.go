@@ -24,10 +24,27 @@ func Home(c *gin.Context) {
 	} else {
 		targets = api.ListTargets()
 	}
+
+	now := time.Now()
+	uptime := make(map[uint][]common.TargetHealth)
+	for _, health := range targetHealths {
+		if now.Sub(health.Time) < 300*time.Minute {
+			uptime[health.TargetID] = append(uptime[health.TargetID], health)
+		}
+	}
+
+	// only show latest 20 health checks
+	for id, healths := range uptime {
+		if len(healths) > 20 {
+			uptime[id] = healths[len(healths)-20:]
+		}
+	}
+
 	ReturnHTML(c, "index", gin.H{
 		"targets":      targets,
 		"sshpiperHost": sshpiperHost,
 		"sshpiperPort": sshpiperPort,
+		"uptime":       uptime,
 	})
 }
 
@@ -69,7 +86,7 @@ func Login(c *gin.Context) {
 		session.Set("user", *user)
 		session.Save()
 
-		c.Redirect(http.StatusFound, "/account")
+		c.Redirect(http.StatusFound, "/")
 	}
 }
 

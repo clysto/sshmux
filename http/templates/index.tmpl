@@ -19,7 +19,26 @@
       data-user="{{.User}}"
     >
       {{.Name}}
-      <span class="py-1 text-secondary">SSH</span>
+      {{ if (gt (len (index $.uptime .ID)) 0) }}
+      <div class="flex-shrink-0">
+        <div class="mt-1" style="font-size: 0;">
+          {{ $len := sub 20 (len (index $.uptime .ID)) }}
+          {{ range seq $len }}
+            <span class="uptime-status bg-secondary"></span>
+          {{ end }}
+          {{ range index $.uptime .ID }}
+            {{ if .Up }}
+              <span class="uptime-status bg-success" title="{{.Time}}"></span>
+            {{ else }}
+              <span class="uptime-status bg-danger" title="{{.Time}}"></span>
+            {{ end }}
+          {{ end }}
+        </div>
+        <div class="d-flex justify-content-between text-secondary" style="font-size: 12px;">
+          <span class="me-2">{{ duration (index (index $.uptime .ID) 0).Time }}</span><span>now</span>
+        </div>
+      </div>
+      {{ end }}
     </button>
     {{else}}
     <p class="list-group-item text-center">No targets found.</p>

@@ -23,3 +23,4 @@ var sshpiperHost string
 var sshpiperPort int
 
 var recordingsDir string
+var targetHealths []common.TargetHealth

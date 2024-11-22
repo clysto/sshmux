@@ -9,6 +9,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/glebarez/sqlite"
@@ -19,6 +20,12 @@ import (
 
 type API struct {
 	db *gorm.DB
+}
+
+type TargetHealth struct {
+	TargetID uint
+	Up       bool
+	Time     time.Time
 }
 
 func NewAPI(dbPath string) (*API, error) {
@@ -285,4 +292,43 @@ func (api *API) GetUserById(id int) *User {
 		return nil
 	}
 	return &user
+}
+
+func (api *API) CheckTargetHealth(result *[]TargetHealth) {
+	now := time.Now()
+	targets := api.ListTargets()
+
+	// Remove old statuses
+	for index, status := range *result {
+		if now.Sub(status.Time) <= 8*time.Hour {
+			*result = (*result)[index:]
+			break
+		}
+	}
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Iterate over targets and check health concurrently
+	for _, target := range targets {
+		wg.Add(1)
+
+		// Launch a goroutine for each target
+		go func(t Target) {
+			defer wg.Done()
+
+			up := TestSSHConnection(t)
+
+			// Lock before appending to the shared slice
+			mu.Lock()
+			*result = append(*result, TargetHealth{
+				TargetID: t.ID,
+				Up:       up,
+				Time:     now,
+			})
+			mu.Unlock()
+		}(target)
+	}
+
+	wg.Wait()
 }
