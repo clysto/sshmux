@@ -240,6 +240,7 @@
             {{ end }}
           </div>
           <p class="mb-0 text-body-secondary">Created at {{ .CreatedAt.Format "Jan 2, 2006 (timezone MST)" }}</p>
+          <p class="mb-0 text-body-secondary">Last login {{ duration .LastLoginAt }}</p>
         </div>
         {{ else }}
         <div class="list-group-item text-center">

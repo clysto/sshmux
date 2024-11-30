@@ -140,6 +140,12 @@ func (api *API) GetUserBySSO(providerName, subject string) *User {
 		return nil
 	}
 
+	user.LastLoginAt = time.Now()
+
+	if err := api.db.Save(&user).Error; err != nil {
+		return &user
+	}
+
 	return &user
 }
 
@@ -168,6 +174,12 @@ func (api *API) Login(username, password string) (*User, error) {
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, errors.New("invalid password")
+	}
+
+	user.LastLoginAt = time.Now()
+
+	if err := api.db.Save(&user).Error; err != nil {
+		return &user, nil
 	}
 
 	return &user, nil

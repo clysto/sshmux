@@ -202,7 +202,7 @@ func AuthCallback(c *gin.Context) {
 	session.Set("user", *user)
 	session.Save()
 
-	c.Redirect(http.StatusFound, "/account")
+	c.Redirect(http.StatusFound, "/")
 }
 
 func CreatePubkey(c *gin.Context) {

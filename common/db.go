@@ -13,6 +13,7 @@ type User struct {
 	IsAdmin        bool
 	SSOCredentials []SSOCredential
 	Pubkeys        []Pubkey
+	LastLoginAt    time.Time
 }
 
 type SSOCredential struct {

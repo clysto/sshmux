@@ -18,11 +18,10 @@ func main() {
 		ErrWriter: os.Stderr,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:     "config",
-				Aliases:  []string{"c"},
-				Usage:    "toml config file",
-				Value:    "/etc/sshmux.toml",
-				Required: true,
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "toml config file",
+				Value:   "/etc/sshmux.toml",
 			},
 		},
 		Commands: []*cli.Command{
@@ -49,6 +48,13 @@ func main() {
 				Args:      true,
 				ArgsUsage: "<username> <true|false>",
 				Action:    cmd.SetAdmin,
+			},
+			{
+				Name:      "useradd",
+				Usage:     "add user",
+				Args:      true,
+				ArgsUsage: "<username> <password> <is_admin>",
+				Action:    cmd.UserAdd,
 			},
 		},
 	}
