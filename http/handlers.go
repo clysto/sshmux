@@ -16,18 +16,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Home(c *gin.Context) {
+func (s *HTTPServer) Home(c *gin.Context) {
 	query := c.Query("q")
 	var targets []common.Target
 	if query != "" {
-		targets = api.SearchTargets(query)
+		targets = s.api.SearchTargets(query)
 	} else {
-		targets = api.ListTargets()
+		targets = s.api.ListTargets()
 	}
 
 	now := time.Now()
 	uptime := make(map[uint][]common.TargetHealth)
-	for _, health := range targetHealths {
+	for _, health := range s.targetHealths {
 		if now.Sub(health.Time) < 300*time.Minute {
 			uptime[health.TargetID] = append(uptime[health.TargetID], health)
 		}
@@ -42,13 +42,13 @@ func Home(c *gin.Context) {
 
 	ReturnHTML(c, "index", gin.H{
 		"targets":      targets,
-		"sshpiperHost": sshpiperHost,
-		"sshpiperPort": sshpiperPort,
+		"sshpiperHost": s.sshpiperHost,
+		"sshpiperPort": s.sshpiperPort,
 		"uptime":       uptime,
 	})
 }
 
-func Login(c *gin.Context) {
+func (s *HTTPServer) Login(c *gin.Context) {
 	session := sessions.Default(c)
 	if c.Request.Method == "GET" {
 		// Generate a random oidc state
@@ -57,7 +57,7 @@ func Login(c *gin.Context) {
 
 		var ssos []gin.H
 		// Add the SSO providers to the HTML page
-		for _, sso := range ssoProviders {
+		for _, sso := range s.ssoProviders {
 			ssos = append(ssos, gin.H{
 				"label": sso.Label,
 				"url":   sso.Config.AuthCodeURL(fmt.Sprintf("%s-%s", sso.Name, state)),
@@ -75,7 +75,7 @@ func Login(c *gin.Context) {
 		username := c.PostForm("username")
 		password := c.PostForm("password")
 
-		user, err := api.Login(username, password)
+		user, err := s.api.Login(username, password)
 		if err != nil {
 			session.AddFlash("Invalid username or password.", "error")
 			session.Save()
@@ -90,16 +90,16 @@ func Login(c *gin.Context) {
 	}
 }
 
-func Logout(c *gin.Context) {
+func (s *HTTPServer) Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
 	session.Save()
 	c.Redirect(http.StatusFound, "/")
 }
 
-func Account(c *gin.Context) {
+func (s *HTTPServer) Account(c *gin.Context) {
 	user := c.MustGet("user").(common.User)
-	keys := api.GetPubkeysByUserID(user.ID)
+	keys := s.api.GetPubkeysByUserID(user.ID)
 
 	latestKeyID := -1
 	latestUsedAt := time.Time{}
@@ -117,7 +117,7 @@ func Account(c *gin.Context) {
 	})
 }
 
-func AuthCallback(c *gin.Context) {
+func (s *HTTPServer) AuthCallback(c *gin.Context) {
 	session := sessions.Default(c)
 
 	returnedState := c.Query("state")
@@ -140,7 +140,7 @@ func AuthCallback(c *gin.Context) {
 	}
 
 	var ssoProvider *SsoProvider
-	for _, sso := range ssoProviders {
+	for _, sso := range s.ssoProviders {
 		if ssoName == sso.Name {
 			ssoProvider = sso
 			break
@@ -181,7 +181,7 @@ func AuthCallback(c *gin.Context) {
 	}
 
 	// Find or create the user
-	user := api.GetUserBySSO(ssoName, claims.Subject)
+	user := s.api.GetUserBySSO(ssoName, claims.Subject)
 	if user == nil {
 		// First time login
 		user = &common.User{
@@ -205,11 +205,11 @@ func AuthCallback(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/")
 }
 
-func CreatePubkey(c *gin.Context) {
+func (s *HTTPServer) CreatePubkey(c *gin.Context) {
 	user := c.MustGet("user").(common.User)
 	key := c.PostForm("publicKey")
 
-	err := api.CreatePubkey(common.Pubkey{
+	err := s.api.CreatePubkey(common.Pubkey{
 		UserID: user.ID,
 		Key:    key,
 	})
@@ -221,7 +221,7 @@ func CreatePubkey(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/account")
 }
 
-func DeletePubkey(c *gin.Context) {
+func (s *HTTPServer) DeletePubkey(c *gin.Context) {
 	user := c.MustGet("user").(common.User)
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -229,12 +229,12 @@ func DeletePubkey(c *gin.Context) {
 		ReturnError(c, http.StatusBadRequest, "Invalid pubkey ID")
 		return
 	}
-	key := api.GetPubkeyById(id)
+	key := s.api.GetPubkeyById(id)
 	if key == nil || key.UserID != user.ID {
 		ReturnError(c, http.StatusBadRequest, "Invalid pubkey ID")
 		return
 	}
-	err = api.DeletePubkeyById(id)
+	err = s.api.DeletePubkeyById(id)
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete pubkey: %v", err))
 		return
@@ -242,7 +242,7 @@ func DeletePubkey(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/account")
 }
 
-func Admin(c *gin.Context) {
+func (s *HTTPServer) Admin(c *gin.Context) {
 	tab := c.Query("tab")
 
 	if tab != "recordings" && tab != "targets" && tab != "users" {
@@ -282,7 +282,7 @@ func Admin(c *gin.Context) {
 			}
 		}
 
-		recordings, hasNext := api.SearchRecordings(30, page, user, target, after, before)
+		recordings, hasNext := s.api.SearchRecordings(30, page, user, target, after, before)
 		ReturnHTML(c, "admin", gin.H{
 			"recordings": recordings,
 			"hasPrev":    page > 1,
@@ -298,7 +298,7 @@ func Admin(c *gin.Context) {
 			"tab": tab,
 		})
 	case "targets":
-		targets := api.ListTargets()
+		targets := s.api.ListTargets()
 		ReturnHTML(c, "admin", gin.H{
 			"targets": targets,
 			"tab":     tab,
@@ -308,7 +308,7 @@ func Admin(c *gin.Context) {
 		if err != nil {
 			page = 1
 		}
-		users, hasNext := api.ListUsers(30, page)
+		users, hasNext := s.api.ListUsers(30, page)
 		ReturnHTML(c, "admin", gin.H{
 			"tab":      tab,
 			"users":    users,
@@ -320,10 +320,10 @@ func Admin(c *gin.Context) {
 	}
 }
 
-func RecordingPage(c *gin.Context) {
+func (s *HTTPServer) RecordingPage(c *gin.Context) {
 	id := c.Param("id")
-	recording := api.GetRecordingById(id)
-	dir := path.Join(recordingsDir, id)
+	recording := s.api.GetRecordingById(id)
+	dir := path.Join(s.recordingsDir, id)
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, "Failed to list channel files")
@@ -346,7 +346,7 @@ func RecordingPage(c *gin.Context) {
 	})
 }
 
-func CreateTarget(c *gin.Context) {
+func (s *HTTPServer) CreateTarget(c *gin.Context) {
 	name := c.PostForm("name")
 	host := c.PostForm("host")
 	port, err := strconv.Atoi(c.PostForm("port"))
@@ -356,7 +356,7 @@ func CreateTarget(c *gin.Context) {
 	}
 	user := c.PostForm("user")
 
-	err = api.CreateTarget(common.Target{
+	err = s.api.CreateTarget(common.Target{
 		Name: name,
 		Host: host,
 		Port: int32(port),
@@ -370,7 +370,7 @@ func CreateTarget(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin")
 }
 
-func UpdateTarget(c *gin.Context) {
+func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid pubkey ID")
@@ -386,7 +386,7 @@ func UpdateTarget(c *gin.Context) {
 	}
 	user := c.PostForm("user")
 
-	target := api.GetTargetById(id)
+	target := s.api.GetTargetById(id)
 	if target == nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid target ID")
 		return
@@ -396,7 +396,7 @@ func UpdateTarget(c *gin.Context) {
 	target.Port = int32(port)
 	target.User = user
 
-	err = api.UpdateTarget(*target)
+	err = s.api.UpdateTarget(*target)
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to update target: %v", err))
 		return
@@ -405,13 +405,13 @@ func UpdateTarget(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin")
 }
 
-func DeleteTarget(c *gin.Context) {
+func (s *HTTPServer) DeleteTarget(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid pubkey ID")
 		return
 	}
-	err = api.DeleteTargetId(id)
+	err = s.api.DeleteTargetId(id)
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete target: %v", err))
 		return
@@ -419,18 +419,18 @@ func DeleteTarget(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin?tab=targets")
 }
 
-func DeleteUser(c *gin.Context) {
+func (s *HTTPServer) DeleteUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid user ID")
 		return
 	}
-	user := api.GetUserById(id)
+	user := s.api.GetUserById(id)
 	if user == nil || user.IsAdmin {
 		ReturnError(c, http.StatusBadRequest, "Cannot delete user")
 		return
 	}
-	err = api.DeleteUserById(id)
+	err = s.api.DeleteUserById(id)
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete user: %v", err))
 		return
@@ -438,7 +438,7 @@ func DeleteUser(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin?tab=users")
 }
 
-func ChangeUserName(c *gin.Context) {
+func (s *HTTPServer) ChangeUserName(c *gin.Context) {
 	session := sessions.Default(c)
 	creating := false
 	var user common.User
@@ -474,7 +474,7 @@ func ChangeUserName(c *gin.Context) {
 		}
 
 		// check if username is already taken
-		if api.UserExists(username) {
+		if s.api.UserExists(username) {
 			session.AddFlash("Username is already taken.", "error")
 			session.Save()
 			c.Redirect(http.StatusFound, "/username")
@@ -482,21 +482,21 @@ func ChangeUserName(c *gin.Context) {
 		}
 
 		if creating {
-			err := api.CreateUser(user)
+			err := s.api.CreateUser(user)
 			if err != nil {
 				ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create user: %v", err))
 				return
 			}
 			session.Delete("creatingUser")
 		} else {
-			err := api.UpdateUser(user)
+			err := s.api.UpdateUser(user)
 			if err != nil {
 				ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to update user: %v", err))
 				return
 			}
 		}
 
-		user = *api.GetUserByName(user.Username)
+		user = *s.api.GetUserByName(user.Username)
 
 		session.Set("user", user)
 		session.Save()
@@ -514,8 +514,8 @@ func HandleNotFound(c *gin.Context) {
 	ReturnError(c, http.StatusNotFound, "Page not found")
 }
 
-func HandleRecording(c *gin.Context) {
+func (s *HTTPServer) HandleRecording(c *gin.Context) {
 	id := c.Param("id")
 	channel := c.Param("channel")
-	http.ServeFile(c.Writer, c.Request, path.Join(recordingsDir, id, channel))
+	http.ServeFile(c.Writer, c.Request, path.Join(s.recordingsDir, id, channel))
 }

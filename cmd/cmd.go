@@ -2,18 +2,28 @@ package cmd
 
 import (
 	"sshmux/common"
+	sshmuxhttp "sshmux/http"
+	sshmuxssh "sshmux/ssh"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Passwd(cCtx *cli.Context) error {
+func loadConfig(cCtx *cli.Context) (*common.Config, *common.API, error) {
 	configPath := cCtx.String("config")
 	config, err := common.LoadConfig(configPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	api, err := common.NewAPI(config.DB)
+	if err != nil {
+		return nil, nil, err
+	}
+	return config, api, nil
+}
+
+func Passwd(cCtx *cli.Context) error {
+	_, api, err := loadConfig(cCtx)
 	if err != nil {
 		return err
 	}
@@ -46,12 +56,7 @@ func Passwd(cCtx *cli.Context) error {
 }
 
 func SetAdmin(cCtx *cli.Context) error {
-	configPath := cCtx.String("config")
-	config, err := common.LoadConfig(configPath)
-	if err != nil {
-		return err
-	}
-	api, err := common.NewAPI(config.DB)
+	_, api, err := loadConfig(cCtx)
 	if err != nil {
 		return err
 	}
@@ -83,12 +88,7 @@ func SetAdmin(cCtx *cli.Context) error {
 }
 
 func UserAdd(cCtx *cli.Context) error {
-	configPath := cCtx.String("config")
-	config, err := common.LoadConfig(configPath)
-	if err != nil {
-		return err
-	}
-	api, err := common.NewAPI(config.DB)
+	_, api, err := loadConfig(cCtx)
 	if err != nil {
 		return err
 	}
@@ -123,6 +123,27 @@ func UserAdd(cCtx *cli.Context) error {
 	if err := api.CreateUser(user); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func Serve(cCtx *cli.Context) error {
+	config, _, err := loadConfig(cCtx)
+	if err != nil {
+		return err
+	}
+
+	sshServer, err := sshmuxssh.NewServer(config)
+	if err != nil {
+		return err
+	}
+	httpServer, err := sshmuxhttp.NewServer(config)
+	if err != nil {
+		return err
+	}
+
+	go sshServer.Start()
+	httpServer.Start()
 
 	return nil
 }

@@ -1,6 +1,3 @@
-*.db
-/host_key
 /build
-/sshpiperd
-/sshmux
-/config.toml
+/tmp
+.DS_Store

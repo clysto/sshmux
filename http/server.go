@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"html/template"
+	"net"
 	"net/http"
 	"path/filepath"
 	"sshmux/common"
@@ -19,7 +20,7 @@ import (
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
-	"github.com/urfave/cli/v2"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
 
@@ -29,29 +30,50 @@ var templatesFS embed.FS
 //go:embed assets/*
 var assetsFS embed.FS
 
+type SsoProvider struct {
+	Name     string
+	Label    string
+	Config   oauth2.Config
+	Provider *oidc.Provider
+	Verifier *oidc.IDTokenVerifier
+}
+
+type HTTPServer struct {
+	app           *gin.Engine
+	port          int
+	host          string
+	sshpiperHost  string
+	sshpiperPort  int
+	recordingsDir string
+	api           *common.API
+	ssoProviders  []*SsoProvider
+	targetHealths []common.TargetHealth
+	cronManager   *cron.Cron
+}
+
 func embeddedFH(config goview.Config, tmpl string) (string, error) {
 	path := filepath.Join(config.Root, tmpl)
 	bytes, err := templatesFS.ReadFile(path + config.Extension)
 	return string(bytes), err
 }
 
-func RunServer(cCtx *cli.Context) error {
-	configPath := cCtx.String("config")
-	config, err := common.LoadConfig(configPath)
-	if err != nil {
-		return err
+func NewServer(config *common.Config) (*HTTPServer, error) {
+	server := &HTTPServer{
+		port: config.HTTPPort,
+		host: config.Host,
 	}
-	sshpiperHost = config.SSHHost
-	sshpiperPort = config.SSHPort
-	recordingsDir = config.RecordingsDir
+
+	server.sshpiperHost = config.Host
+	server.sshpiperPort = config.SSHPort
+	server.recordingsDir = config.RecordingsDir
 
 	// Config SSO providers
 	for _, ssoConfig := range config.SSOProviders {
 		provider, err := oidc.NewProvider(context.Background(), ssoConfig.IssuerURL)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		ssoProviders = append(ssoProviders, &SsoProvider{
+		server.ssoProviders = append(server.ssoProviders, &SsoProvider{
 			Name:  ssoConfig.Name,
 			Label: ssoConfig.Label,
 			Config: oauth2.Config{
@@ -65,32 +87,32 @@ func RunServer(cCtx *cli.Context) error {
 			Verifier: provider.Verifier(&oidc.Config{ClientID: ssoConfig.ClientID}),
 		})
 	}
-
 	// Config API
-	api, err = common.NewAPI(config.DB)
+	var err error
+	server.api, err = common.NewAPI(config.DB)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Start the cron job
-	c := cron.New()
-	c.AddFunc("@daily", func() {
-		api.DeleteOldRecordings(time.Now().AddDate(0, 0, -config.RecordingsRetentionDays), config.RecordingsDir)
+	// Config the cron job
+	server.cronManager = cron.New()
+	server.cronManager.AddFunc("@daily", func() {
+		server.api.DeleteOldRecordings(time.Now().AddDate(0, 0, -config.RecordingsRetentionDays), config.RecordingsDir)
 	})
-	api.CheckTargetHealth(&targetHealths)
-	c.AddFunc("*/10 * * * *", func() {
-		api.CheckTargetHealth(&targetHealths)
+	server.api.CheckTargetHealth(&server.targetHealths)
+	server.cronManager.AddFunc("*/10 * * * *", func() {
+		server.api.CheckTargetHealth(&server.targetHealths)
 	})
-	c.Start()
 
-	// Start the web server
-	app := gin.Default()
+	// Create the web server
+	server.app = gin.New()
+	server.app.Use(gin.Recovery())
 	gob.Register(common.User{})
 	sessionStore := memstore.NewStore([]byte(config.SessionSecret))
 	sessionStore.Options(sessions.Options{
 		MaxAge: 1800, // 30 minutes
 	})
-	app.Use(sessions.Sessions("sshmux", sessionStore))
+	server.app.Use(sessions.Sessions("sshmux", sessionStore))
 
 	gv := ginview.New(goview.Config{
 		Root:         "templates",
@@ -114,32 +136,39 @@ func RunServer(cCtx *cli.Context) error {
 
 	gv.SetFileHandler(embeddedFH)
 
-	app.HTMLRender = gv
+	server.app.HTMLRender = gv
 
-	app.Use(Auth())
+	server.app.Use(Auth())
 
-	app.StaticFS("/static", http.FS(assetsFS))
+	server.app.StaticFS("/static", http.FS(assetsFS))
 
-	app.GET("/", RequireLogin(), Home)
-	app.GET("/login", Login)
-	app.GET("/logout", Logout)
-	app.GET("/admin", RequireAdmin(), Admin)
-	app.GET("/account", RequireLogin(), Account)
-	app.GET("/auth/callback", AuthCallback)
-	app.GET("/username", ChangeUserName)
-	app.GET("/recordings/:id", RequireAdmin(), RecordingPage)
-	app.GET("/recordings/cast/:id/:channel", RequireAdmin(), HandleRecording)
+	server.app.GET("/", RequireLogin(), server.Home)
+	server.app.GET("/login", server.Login)
+	server.app.GET("/logout", server.Logout)
+	server.app.GET("/admin", RequireAdmin(), server.Admin)
+	server.app.GET("/account", RequireLogin(), server.Account)
+	server.app.GET("/auth/callback", server.AuthCallback)
+	server.app.GET("/username", server.ChangeUserName)
+	server.app.GET("/recordings/:id", RequireAdmin(), server.RecordingPage)
+	server.app.GET("/recordings/cast/:id/:channel", RequireAdmin(), server.HandleRecording)
 
-	app.POST("/login", Login)
-	app.POST("/pubkey", RequireLogin(), CreatePubkey)
-	app.POST("/pubkey/delete/:id", RequireLogin(), DeletePubkey)
-	app.POST("/target", RequireAdmin(), CreateTarget)
-	app.POST("/target/delete/:id", RequireAdmin(), DeleteTarget)
-	app.POST("/target/update/:id", RequireAdmin(), UpdateTarget)
-	app.POST("/user/delete/:id", RequireAdmin(), DeleteUser)
-	app.POST("/username", ChangeUserName)
+	server.app.POST("/login", server.Login)
+	server.app.POST("/pubkey", RequireLogin(), server.CreatePubkey)
+	server.app.POST("/pubkey/delete/:id", RequireLogin(), server.DeletePubkey)
+	server.app.POST("/target", RequireAdmin(), server.CreateTarget)
+	server.app.POST("/target/delete/:id", RequireAdmin(), server.DeleteTarget)
+	server.app.POST("/target/update/:id", RequireAdmin(), server.UpdateTarget)
+	server.app.POST("/user/delete/:id", RequireAdmin(), server.DeleteUser)
+	server.app.POST("/username", server.ChangeUserName)
 
-	app.NoRoute(HandleNotFound)
+	server.app.NoRoute(HandleNotFound)
+	return server, nil
+}
 
-	return app.Run(fmt.Sprintf("0.0.0.0:%d", config.Port))
+func (s *HTTPServer) Start() error {
+	s.cronManager.Start()
+	addr := net.JoinHostPort(s.host, fmt.Sprintf("%d", s.port))
+	log.Infof("http server listening on %s\n", addr)
+	s.app.Run(addr)
+	return nil
 }

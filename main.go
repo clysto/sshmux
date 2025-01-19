@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sshmux/cmd"
-	"sshmux/http"
-	"sshmux/sshpiperplugin"
 
 	"github.com/urfave/cli/v2"
 )
@@ -27,13 +25,8 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:   "serve",
-				Usage:  "start manage web server",
-				Action: http.RunServer,
-			},
-			{
-				Name:   "plugin",
-				Usage:  "start sshpiper plugin",
-				Action: sshpiperplugin.StartPlugin,
+				Usage:  "start server",
+				Action: cmd.Serve,
 			},
 			{
 				Name:      "passwd",

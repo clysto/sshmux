@@ -14,13 +14,14 @@ type SSOConfig struct {
 }
 
 type Config struct {
-	Port                    int         `toml:"http_port"`
+	HTTPPort                int         `toml:"http_port"`
 	SSHPort                 int         `toml:"ssh_port"`
-	SSHHost                 string      `toml:"ssh_host"`
+	Host                    string      `toml:"host"`
 	ExternalURL             string      `toml:"external_url"`
 	SSOProviders            []SSOConfig `toml:"sso_providers"`
 	DB                      string      `toml:"db"`
 	PrivateKey              string      `toml:"private_key"`
+	HostKey                 string      `toml:"host_key"`
 	SessionSecret           string      `toml:"session_secret"`
 	RecordingsDir           string      `toml:"recordings_dir"`
 	RecordingsRetentionDays int         `toml:"recordings_retention_days"`
