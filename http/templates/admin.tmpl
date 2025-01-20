@@ -142,10 +142,9 @@
         </button>
       </div>
       <hr />
-      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+      <div class="d-block d-md-flex flex-wrap justify-content-start align-items-start">
         {{ range.targets }}
-        <div class="col">
-          <div class="card text-bg">
+          <div class="target card text-bg">
             <div class="card-header">
               <i class="bi bi-server me-2"></i>
               <strong>
@@ -153,6 +152,9 @@
               </strong>
             </div>
             <div class="card-body">
+              <p class="line-clamp">
+                {{.Description}}
+              </p>
               <p class="card-text font-monospace" style="font-size: 14px">
                 <strong>Host:</strong>
                 {{.Host}}
@@ -175,6 +177,7 @@
                   data-host="{{.Host}}"
                   data-port="{{.Port}}"
                   data-user="{{.User}}"
+                  data-desc="{{.Description}}"
                 >
                   <i class="bi bi-pencil"></i>
                   Edit
@@ -193,7 +196,6 @@
               </div>
             </div>
           </div>
-        </div>
         {{else}}
         <div class="col">
           <div class="card h-100 text-center">
@@ -202,7 +204,7 @@
                 <i class="bi bi-exclamation-circle"></i>
                 没有服务器记录
               </h5>
-            </div>
+            </div>-webkit-line-clamp: 3;
           </div>
         </div>
         {{ end }}
@@ -293,6 +295,10 @@
             <label for="targetName" class="form-label">Name</label>
           </div>
           <div class="mb-3 form-floating">
+            <input type="text" class="form-control" id="targetDesc" name="description" required />
+            <label for="targetDesc" class="form-label">Description</label>
+          </div>
+          <div class="mb-3 form-floating">
             <input type="text" class="form-control" id="targetHost" name="host" required />
             <label for="targetHost" class="form-label">Host</label>
           </div>
@@ -369,6 +375,7 @@
       const host = button.getAttribute('data-host');
       const port = button.getAttribute('data-port');
       const user = button.getAttribute('data-user');
+      const desc = button.getAttribute('data-desc');
 
       modalTitle.textContent = 'Edit Target';
       targetForm.action = '/target/update/' + id;
@@ -377,6 +384,7 @@
       document.getElementById('targetHost').value = host;
       document.getElementById('targetPort').value = port;
       document.getElementById('targetUser').value = user;
+      document.getElementById('targetDesc').value = desc;
     }
   });
 

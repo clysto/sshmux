@@ -25,10 +25,11 @@ type SSOCredential struct {
 
 type Target struct {
 	gorm.Model
-	Name string `gorm:"unique"`
-	Host string
-	Port int32
-	User string
+	Name        string `gorm:"unique"`
+	Description string
+	Host        string
+	Port        int32
+	User        string
 }
 
 type Pubkey struct {

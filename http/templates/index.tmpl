@@ -17,10 +17,14 @@
       data-host="{{.Host}}"
       data-port="{{.Port}}"
       data-user="{{.User}}"
+      data-description="{{.Description}}"
     >
-      {{.Name}}
+      <div>
+        <div>{{.Name}}</div>
+        <div class="text-secondary line-clamp" style="font-size: 12px;">{{.Description}}</div>
+      </div>
       {{ if (gt (len (index $.uptime .ID)) 0) }}
-      <div class="flex-shrink-0">
+      <div class="flex-shrink-0 ms-2">
         <div class="mt-1" style="font-size: 0;">
           {{ $len := sub 20 (len (index $.uptime .ID)) }}
           {{ range seq $len }}

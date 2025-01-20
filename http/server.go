@@ -58,6 +58,8 @@ func embeddedFH(config goview.Config, tmpl string) (string, error) {
 }
 
 func NewServer(config *common.Config) (*HTTPServer, error) {
+	gin.SetMode(gin.ReleaseMode)
+
 	server := &HTTPServer{
 		port: config.HTTPPort,
 		host: config.Host,
@@ -146,7 +148,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 	server.app.GET("/login", server.Login)
 	server.app.GET("/logout", server.Logout)
 	server.app.GET("/admin", RequireAdmin(), server.Admin)
-	server.app.GET("/account", RequireLogin(), server.Account)
+	server.app.GET("/keys", RequireLogin(), server.Keys)
 	server.app.GET("/auth/callback", server.AuthCallback)
 	server.app.GET("/username", server.ChangeUserName)
 	server.app.GET("/recordings/:id", RequireAdmin(), server.RecordingPage)

@@ -26,7 +26,7 @@ type challengeContext struct {
 }
 
 func (c *challengeContext) Meta() interface{} {
-	return nil
+	return c
 }
 
 func (c *challengeContext) ChallengedUsername() string {
@@ -118,7 +118,9 @@ func (s *SSHServer) handleConnection(conn net.Conn) {
 			log.Errorf("cannot create screen recording dir %v: %v", recorddir, err)
 			return
 		}
-		recorder := newAsciicastLogger(recorddir, "")
+		recorder := newAsciicastLogger(recorddir,
+			p.ChallengeContext().(*challengeContext).Username,
+			p.ChallengeContext().(*challengeContext).Target)
 		defer recorder.Close()
 
 		uphook = recorder.uphook
@@ -153,13 +155,8 @@ func (s *SSHServer) supportedMethods(conn ssh.ConnMetadata, challengeCtx ssh.Cha
 }
 
 func (s *SSHServer) findAndCreateUpstream(conn ssh.ConnMetadata, publicKey ssh.PublicKey, challengeCtx ssh.ChallengeContext) (*ssh.Upstream, error) {
-	sshuser := conn.User()
-
-	user, target, err := s.parseUserAndTarget(sshuser)
-
-	if err != nil {
-		return nil, err
-	}
+	user := challengeCtx.(*challengeContext).Username
+	target := challengeCtx.(*challengeContext).Target
 
 	pubkeys := s.api.GetPubkeysByUsername(user)
 	for _, pubkey := range pubkeys {
@@ -195,7 +192,7 @@ func (s *SSHServer) findAndCreateUpstream(conn ssh.ConnMetadata, publicKey ssh.P
 func (s *SSHServer) banner(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeContext) string {
 	sshuser := conn.User()
 
-	_, target, err := s.parseUserAndTarget(sshuser)
+	user, target, err := s.parseUserAndTarget(sshuser)
 
 	if err != nil {
 		if errors.Is(err, errUserFormat) {
@@ -210,6 +207,9 @@ func (s *SSHServer) banner(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeCont
 	if !common.TestSSHConnection(*target) {
 		return fmt.Sprintf("target %v is not reachable.\n", target.Name)
 	}
+
+	challengeCtx.(*challengeContext).Username = user
+	challengeCtx.(*challengeContext).Target = target
 	return ""
 }
 
@@ -226,14 +226,9 @@ func (s *SSHServer) createChallengeContext(conn ssh.ConnMetadata) (ssh.Challenge
 	return ctx, nil
 }
 
-func (p *SSHServer) createRecording(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeContext) {
-	sshuser := conn.User()
-
-	username, target, err := p.parseUserAndTarget(sshuser)
-
-	if err != nil {
-		return
-	}
+func (p *SSHServer) createRecording(_ ssh.ConnMetadata, challengeCtx ssh.ChallengeContext) {
+	username := challengeCtx.(*challengeContext).Username
+	target := challengeCtx.(*challengeContext).Target
 
 	user := p.api.GetUserByName(username)
 

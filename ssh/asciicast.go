@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sshmux/common"
+	"strings"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 const (
@@ -39,40 +43,68 @@ func readString(buf *bytes.Reader) string {
 	return string(s)
 }
 
-type asciicastLogger struct {
-	starttime    time.Time
-	envs         map[string]string
-	initWidth    uint32
-	initHeight   uint32
-	channels     map[uint32]*os.File
-	channelIDMap map[uint32]uint32
-	recorddir    string
-	prefix       string // prefix for the output file
+type channelMeta struct {
+	cmd             string
+	starttime       time.Time
+	initWidth       uint32
+	initHeight      uint32
+	displayedBanner bool
+	envs            map[string]string
+	f               *os.File
 }
 
-func newAsciicastLogger(recorddir string, prefix string) *asciicastLogger {
+type asciicastLogger struct {
+	channels     map[uint32]*channelMeta
+	channelIDMap map[uint32]uint32
+	recorddir    string
+	user         string
+	target       *common.Target
+}
+
+func newAsciicastLogger(recorddir string, user string, target *common.Target) *asciicastLogger {
 	return &asciicastLogger{
-		envs:         make(map[string]string),
 		recorddir:    recorddir,
-		channels:     make(map[uint32]*os.File),
+		channels:     make(map[uint32]*channelMeta),
 		channelIDMap: make(map[uint32]uint32),
-		prefix:       prefix,
+		user:         user,
+		target:       target,
 	}
+}
+
+func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []byte {
+	messageBuf := bytes.NewBuffer(nil)
+	color.New(color.BgGreen, color.FgBlack, color.Bold).Fprintf(messageBuf, " ✓ SSHMUX ┃ %s connected to %s ", l.user, l.target.Name)
+	color.New(color.Reset, color.ResetBold).Fprintf(messageBuf, "\n\r")
+	message := messageBuf.Bytes()
+
+	msg2 := []byte{msgChannelData}
+	msg2 = binary.BigEndian.AppendUint32(msg2, clientChannelID)
+	msg2 = binary.BigEndian.AppendUint32(msg2, uint32(len(message)+len(buf)))
+	msg2 = append(msg2, message...)
+	msg2 = append(msg2, buf...)
+	return msg2
 }
 
 func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
 	if msg[0] == msgChannelData {
 		clientChannelID := binary.BigEndian.Uint32(msg[1:5])
 
-		f, ok := l.channels[clientChannelID]
+		meta, ok := l.channels[clientChannelID]
 		if ok {
 			buf := msg[9:]
-			t := time.Since(l.starttime).Seconds()
+			t := time.Since(meta.starttime).Seconds()
 
-			_, err := fmt.Fprintf(f, "[%v,\"o\",\"%s\"]\n", t, jsonEscape(string(buf)))
+			_, err := fmt.Fprintf(meta.f, "[%v,\"o\",\"%s\"]\n", t, jsonEscape(string(buf)))
 
 			if err != nil {
 				return msg, err
+			}
+
+			if !meta.displayedBanner {
+				meta.displayedBanner = true
+				if meta.envs["TERM"] == "xterm-color" || strings.HasSuffix(meta.envs["TERM"], "-256color") {
+					return l.prependBanner(clientChannelID, buf), nil
+				}
 			}
 		}
 	} else if msg[0] == msgChannelOpenConfirm {
@@ -85,46 +117,48 @@ func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
 
 func (l *asciicastLogger) downhook(msg []byte) ([]byte, error) {
 	if msg[0] == msgChannelRequest {
-		t := time.Since(l.starttime).Seconds()
 		serverChannelID := binary.BigEndian.Uint32(msg[1:5])
 		clientChannelID := l.channelIDMap[serverChannelID]
 		buf := bytes.NewReader(msg[5:])
 		reqType := readString(buf)
+		if _, ok := l.channels[clientChannelID]; !ok {
+			l.channels[clientChannelID] = &channelMeta{
+				envs: make(map[string]string),
+			}
+		}
+		meta := l.channels[clientChannelID]
 
 		switch reqType {
 		case "pty-req":
 			_, _ = buf.ReadByte()
 			term := readString(buf)
-			_ = binary.Read(buf, binary.BigEndian, &l.initWidth)
-			_ = binary.Read(buf, binary.BigEndian, &l.initHeight)
-			l.envs["TERM"] = term
+			_ = binary.Read(buf, binary.BigEndian, &meta.initWidth)
+			_ = binary.Read(buf, binary.BigEndian, &meta.initHeight)
+			meta.envs["TERM"] = term
 		case "env":
 			_, _ = buf.ReadByte()
 			varName := readString(buf)
 			varValue := readString(buf)
-			l.envs[varName] = varValue
+			meta.envs[varName] = varValue
 		case "window-change":
-			f, ok := l.channels[clientChannelID]
-			if !ok {
-				_, _ = buf.ReadByte()
-				var width, height uint32
-				_ = binary.Read(buf, binary.BigEndian, &width)
-				_ = binary.Read(buf, binary.BigEndian, &height)
-
-				_, err := fmt.Fprintf(f, "[%v,\"r\", \"%vx%v\"]\n", t, width, height)
-				if err != nil {
-					return msg, err
-				}
+			_, _ = buf.ReadByte()
+			var width, height uint32
+			_ = binary.Read(buf, binary.BigEndian, &width)
+			_ = binary.Read(buf, binary.BigEndian, &height)
+			t := time.Since(meta.starttime).Seconds()
+			_, err := fmt.Fprintf(meta.f, "[%v,\"r\", \"%vx%v\"]\n", t, width, height)
+			if err != nil {
+				return msg, err
 			}
 		case "shell", "exec":
-			jsonEnvs, err := json.Marshal(l.envs)
+			jsonEnvs, err := json.Marshal(meta.envs)
 
 			if err != nil {
 				return msg, err
 			}
 
 			f, err := os.OpenFile(
-				path.Join(l.recorddir, fmt.Sprintf("%s%s-channel-%d.cast", l.prefix, reqType, clientChannelID)),
+				path.Join(l.recorddir, fmt.Sprintf("%s-channel-%d.cast", reqType, clientChannelID)),
 				os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 				0600,
 			)
@@ -133,18 +167,28 @@ func (l *asciicastLogger) downhook(msg []byte) ([]byte, error) {
 				return msg, err
 			}
 
-			l.channels[clientChannelID] = f
+			meta.f = f
+			meta.displayedBanner = false
+			meta.starttime = time.Now()
 
-			l.starttime = time.Now()
-
-			_, err = fmt.Fprintf(
-				f,
-				"{\"version\": 2, \"width\": %d, \"height\": %d, \"timestamp\": %d, \"env\": %v}\n",
-				l.initWidth,
-				l.initHeight,
-				l.starttime.Unix(),
+			var header string
+			header = fmt.Sprintf(
+				"{\"version\": 2, \"width\": %d, \"height\": %d, \"timestamp\": %d, \"env\": %v",
+				meta.initWidth,
+				meta.initHeight,
+				meta.starttime.Unix(),
 				string(jsonEnvs),
 			)
+
+			if reqType == "exec" {
+				_, _ = buf.ReadByte()
+				meta.cmd = readString(buf)
+				header += fmt.Sprintf(", \"command\": \"%s\"}\n", jsonEscape(meta.cmd))
+			} else {
+				header += "}\n"
+			}
+
+			_, err = fmt.Fprint(meta.f, header)
 
 			if err != nil {
 				return msg, err
@@ -155,8 +199,8 @@ func (l *asciicastLogger) downhook(msg []byte) ([]byte, error) {
 }
 
 func (l *asciicastLogger) Close() (err error) {
-	for _, f := range l.channels {
-		_ = f.Close()
+	for _, meta := range l.channels {
+		_ = meta.f.Close()
 	}
 	return nil
 }

@@ -67,6 +67,22 @@
       .uptime-status:hover {
         scale: 1.5;
       }
+      .line-clamp {
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .target {
+        width: 230px;
+        margin: 0.5rem;
+      }
+      @media (max-width: 768px) { 
+        .target {
+          width: 100%;
+          margin: 0 0 1rem 0;
+        }
+      }
     </style>
     <title>SSHMUX</title>
   </head>
@@ -83,7 +99,7 @@
               <a class="nav-link {{ if eq .currentUrl "/" }} active{{end}}" href="/">Home</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {{ if eq .currentUrl "/account" }} active{{end}}" href="/account">Account</a>
+              <a class="nav-link {{ if eq .currentUrl "/keys" }} active{{end}}" href="/keys">Keys</a>
             </li>
             {{if and .user .user.IsAdmin }}
             <li class="nav-item">

@@ -97,7 +97,7 @@ func (s *HTTPServer) Logout(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/")
 }
 
-func (s *HTTPServer) Account(c *gin.Context) {
+func (s *HTTPServer) Keys(c *gin.Context) {
 	user := c.MustGet("user").(common.User)
 	keys := s.api.GetPubkeysByUserID(user.ID)
 
@@ -110,7 +110,7 @@ func (s *HTTPServer) Account(c *gin.Context) {
 		}
 	}
 
-	ReturnHTML(c, "account", gin.H{
+	ReturnHTML(c, "keys", gin.H{
 		"user":    user,
 		"pubkeys": keys,
 		"latest":  latestKeyID,
@@ -218,7 +218,7 @@ func (s *HTTPServer) CreatePubkey(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusFound, "/account")
+	c.Redirect(http.StatusFound, "/keys")
 }
 
 func (s *HTTPServer) DeletePubkey(c *gin.Context) {
@@ -239,7 +239,7 @@ func (s *HTTPServer) DeletePubkey(c *gin.Context) {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete pubkey: %v", err))
 		return
 	}
-	c.Redirect(http.StatusFound, "/account")
+	c.Redirect(http.StatusFound, "/keys")
 }
 
 func (s *HTTPServer) Admin(c *gin.Context) {
@@ -355,12 +355,14 @@ func (s *HTTPServer) CreateTarget(c *gin.Context) {
 		return
 	}
 	user := c.PostForm("user")
+	desc := c.PostForm("description")
 
 	err = s.api.CreateTarget(common.Target{
-		Name: name,
-		Host: host,
-		Port: int32(port),
-		User: user,
+		Name:        name,
+		Host:        host,
+		Port:        int32(port),
+		User:        user,
+		Description: desc,
 	})
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create target: %v", err))
@@ -385,6 +387,7 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 		return
 	}
 	user := c.PostForm("user")
+	desc := c.PostForm("description")
 
 	target := s.api.GetTargetById(id)
 	if target == nil {
@@ -395,6 +398,7 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 	target.Host = host
 	target.Port = int32(port)
 	target.User = user
+	target.Description = desc
 
 	err = s.api.UpdateTarget(*target)
 	if err != nil {
@@ -501,7 +505,7 @@ func (s *HTTPServer) ChangeUserName(c *gin.Context) {
 		session.Set("user", user)
 		session.Save()
 
-		c.Redirect(http.StatusFound, "/account")
+		c.Redirect(http.StatusFound, "/keys")
 	}
 }
 
