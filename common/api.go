@@ -15,6 +15,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 )
 
@@ -295,7 +296,9 @@ func (api *API) ListUsers(pageSize int, pageNum int) ([]User, bool) {
 }
 
 func (api *API) DeleteUserById(id int) error {
-	return api.db.Where("id = ?", id).Delete(&User{}).Error
+	return api.db.Unscoped().Select(clause.Associations).Delete(&User{
+		Model: gorm.Model{ID: uint(id)},
+	}).Error
 }
 
 func (api *API) GetUserById(id int) *User {

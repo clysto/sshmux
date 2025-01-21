@@ -44,6 +44,6 @@ type Recording struct {
 	UserID   uint
 	TargetID uint
 	RecordID string
-	User     User
-	Target   Target
+	User     User   `gorm:"constraint:OnDelete:SET NULL;"`
+	Target   Target `gorm:"constraint:OnDelete:SET NULL;"`
 }

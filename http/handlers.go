@@ -193,10 +193,12 @@ func (s *HTTPServer) AuthCallback(c *gin.Context) {
 					Subject:      claims.Subject,
 				},
 			},
+			LastLoginAt: time.Now(),
 		}
 		session.Set("creatingUser", *user)
 		session.Save()
 		c.Redirect(http.StatusFound, "/username")
+		return
 	}
 
 	session.Set("user", *user)
@@ -467,6 +469,13 @@ func (s *HTTPServer) ChangeUserName(c *gin.Context) {
 		})
 	} else if c.Request.Method == "POST" {
 		username := c.PostForm("username")
+		if username == "" {
+			session.AddFlash("Username cannot be empty.", "error")
+			session.Save()
+			c.Redirect(http.StatusFound, "/username")
+			return
+		}
+
 		user.Username = username
 
 		r := regexp.MustCompile("^[a-zA-Z0-9_]{3,20}$")
