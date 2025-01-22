@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -45,6 +46,7 @@ type SSHServer struct {
 }
 
 func (s *SSHServer) Start() error {
+	color.NoColor = false
 	s.config = &ssh.PiperConfig{
 		CreateChallengeContext: s.createChallengeContext,
 		NextAuthMethods:        s.supportedMethods,

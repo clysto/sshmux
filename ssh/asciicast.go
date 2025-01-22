@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -73,8 +74,8 @@ func newAsciicastLogger(recorddir string, user string, target *common.Target) *a
 
 func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []byte {
 	messageBuf := bytes.NewBuffer(nil)
-	color.New(color.BgGreen, color.FgBlack, color.Bold).Fprintf(messageBuf, " ✓ SSHMUX ┃ %s connected to %s ", l.user, l.target.Name)
-	color.New(color.Reset, color.ResetBold).Fprintf(messageBuf, "\n\r")
+	color.New(color.BgGreen, color.FgBlack, color.Bold).Fprintf(messageBuf, " ✓ SSHMUX connected ")
+	color.New(color.Reset, color.ResetBold).Fprintf(messageBuf, " pipe %s to %s\n\r", l.user, l.target.Name)
 	message := messageBuf.Bytes()
 
 	msg2 := []byte{msgChannelData}
@@ -86,7 +87,16 @@ func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []by
 }
 
 func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
-	if msg[0] == msgChannelData {
+	if msg[0] == 80 {
+		// filter host keys requests
+		var x struct {
+			RequestName string `sshtype:"80"`
+		}
+		_ = ssh.Unmarshal(msg, &x)
+		if x.RequestName == "hostkeys-prove-00@openssh.com" || x.RequestName == "hostkeys-00@openssh.com" {
+			return nil, nil
+		}
+	} else if msg[0] == msgChannelData {
 		clientChannelID := binary.BigEndian.Uint32(msg[1:5])
 
 		meta, ok := l.channels[clientChannelID]

@@ -65,7 +65,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 		host: config.Host,
 	}
 
-	server.sshpiperHost = config.Host
+	server.sshpiperHost = config.ExternalSSHHost
 	server.sshpiperPort = config.SSHPort
 	server.recordingsDir = config.RecordingsDir
 

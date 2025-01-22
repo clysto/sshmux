@@ -17,6 +17,7 @@ type Config struct {
 	HTTPPort                int         `toml:"http_port"`
 	SSHPort                 int         `toml:"ssh_port"`
 	Host                    string      `toml:"host"`
+	ExternalSSHHost         string      `toml:"external_ssh_host"`
 	ExternalURL             string      `toml:"external_url"`
 	SSOProviders            []SSOConfig `toml:"sso_providers"`
 	DB                      string      `toml:"db"`
