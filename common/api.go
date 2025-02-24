@@ -262,7 +262,7 @@ func (api *API) SearchRecordings(pageSize int, pageNum int, user string, target 
 
 func (api *API) GetRecordingById(id string) *Recording {
 	var recording Recording
-	if api.db.Preload("User").Preload("Target").First(&recording, "record_id = ?", id).Error != nil {
+	if api.db.Preload("User").Preload("Target").First(&recording, "id = ?", id).Error != nil {
 		return nil
 	}
 	return &recording

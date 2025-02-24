@@ -325,22 +325,24 @@ func (s *HTTPServer) Admin(c *gin.Context) {
 func (s *HTTPServer) RecordingPage(c *gin.Context) {
 	id := c.Param("id")
 	recording := s.api.GetRecordingById(id)
-	dir := path.Join(s.recordingsDir, id)
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		ReturnError(c, http.StatusBadRequest, "Failed to list channel files")
-		return
-	}
-	var channels []string
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		channels = append(channels, file.Name())
-	}
 	if recording == nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid recording ID")
 		return
+	}
+	var channels []string
+	if recording.Status == 0 {
+		dir := path.Join(s.recordingsDir, recording.RecordID)
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			ReturnError(c, http.StatusBadRequest, "Failed to list channel files")
+			return
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			channels = append(channels, file.Name())
+		}
 	}
 	ReturnHTML(c, "recording", gin.H{
 		"recording": recording,

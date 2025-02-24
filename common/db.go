@@ -44,6 +44,8 @@ type Recording struct {
 	UserID   uint
 	TargetID uint
 	RecordID string
+	IP       string
+	Status   int
 	User     User   `gorm:"constraint:OnDelete:SET NULL;"`
 	Target   Target `gorm:"constraint:OnDelete:SET NULL;"`
 }

@@ -85,14 +85,18 @@
 
         <a
           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-          href="/recordings/{{ .RecordID }}"
+          href="/recordings/{{ .ID }}"
         >
-          <div>
-            <strong>{{ .User.Username }}</strong>
-            on
-            {{ .Target.Name }}
-          </div>
-          <!-- prettier-ignore -->
+          {{if .Status }}
+            <div>
+              <i class="me-2 bi bi-exclamation-circle-fill"></i>
+              <span class="badge text-bg-secondary">{{.IP}}</span> failed to connect
+            </div>
+          {{ else }}
+            <div>
+              {{ .User.Username }} <span class="badge text-bg-secondary">{{.IP}}</span> connected to {{ .Target.Name }}
+            </div>
+          {{ end }}
           <span class="text-secondary">{{ duration .CreatedAt }}</span>
         </a>
         {{ else }}
@@ -202,9 +206,9 @@
             <div class="card-body">
               <h5 class="card-title">
                 <i class="bi bi-exclamation-circle"></i>
-                没有服务器记录
+                No targets
               </h5>
-            </div>-webkit-line-clamp: 3;
+            </div>
           </div>
         </div>
         {{ end }}

@@ -1,8 +1,27 @@
 {{define "content"}}
 <div>
-  <h2 class="h4 mb-0">{{ .recording.User.Username }} on {{ .recording.Target.Name }}</h2>
+  {{ if .recording.Status }}
+  <h2 class="h4 mb-0">{{ .recording.IP }}</h2>
+  {{ else }}
+  <h2 class="h4 mb-0">
+    {{ .recording.User.Username }} on {{ .recording.Target.Name }}
+  </h2>
+  {{ end }}
   <hr />
-
+  <div class="card shadow-sm my-3">
+    <div class="card-body">
+      <h5 class="card-title">Details</h5>
+      <p class="card-text mb-0">
+        <strong>Time:</strong>
+        {{ .recording.CreatedAt.Format "2006-01-02 15:04:05" }}
+      </p>
+      <p class="card-text"><strong>IP Address:</strong> {{ .recording.IP }}</p>
+      <button class="btn btn-sm btn-primary" id="search-ip">
+        Search IP Address
+      </button>
+    </div>
+  </div>
+  {{ if eq .recording.Status 0 }}
   <select class="form-select mb-2" id="channel-select">
     {{
       range.channels
@@ -30,6 +49,77 @@
         `/recordings/cast/{{.recording.RecordID}}/${channel}`,
         document.getElementById('recording')
       );
+    });
+  </script>
+  {{ end }}
+  <div
+    class="modal fade"
+    id="ipModal"
+    tabindex="-1"
+    aria-labelledby="ipModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="ipModalLabel">IP Information</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <p>
+            <strong>IP Address：</strong>
+            <span id="modal-ip">{{ .recording.IP }}</span>
+          </p>
+          <p>
+            <strong>Location：</strong>
+            <span id="modal-location">加载中...</span>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let result = null;
+    document.getElementById('search-ip').addEventListener('click', function () {
+      const ip = '{{ .recording.IP }}';
+      const modalIP = document.getElementById('modal-ip');
+      const modalLocation = document.getElementById('modal-location');
+
+      // 设置 IP 地址
+      modalIP.textContent = ip;
+      if (!result) {
+        // 调用 API 获取 IP 信息
+        fetch(`https://api.vore.top/api/IPdata?ip=${ip}`)
+          .then((response) => response.json())
+          .then((data) => {
+            modalLocation.textContent = data.adcode.o || '未知';
+          })
+          .catch((error) => {
+            console.error('Error fetching IP data:', error);
+            modalLocation.textContent = '获取失败';
+          });
+      } else {
+        modalLocation.textContent = result.adcode.o || '未知';
+      }
+
+      // 打开 Bootstrap 模态框
+      var ipModal = new bootstrap.Modal(document.getElementById('ipModal'));
+      ipModal.show();
     });
   </script>
 </div>

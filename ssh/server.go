@@ -19,11 +19,12 @@ import (
 
 var errUserFormat = errors.New("invalid ssh user format")
 var errTargetNotFound = errors.New("no matching target found")
+var errUserNotFound = errors.New("no matching user found")
 
 type challengeContext struct {
-	Username string
-	Target   *common.Target
-	UniqID   string
+	User   *common.User
+	Target *common.Target
+	UniqID string
 }
 
 func (c *challengeContext) Meta() interface{} {
@@ -31,7 +32,7 @@ func (c *challengeContext) Meta() interface{} {
 }
 
 func (c *challengeContext) ChallengedUsername() string {
-	return c.Username
+	return c.User.Username
 }
 
 type SSHServer struct {
@@ -100,9 +101,11 @@ func (s *SSHServer) handleConnection(conn net.Conn) {
 	case p = <-pipec:
 	case err := <-errorc:
 		log.Debugf("connection from %v establishing failed reason: %v", conn.RemoteAddr(), err)
+		s.createRecording(1, conn.RemoteAddr().(*net.TCPAddr).IP.String(), nil)
 		return
 	case <-time.After(time.Second * 5):
 		log.Debugf("pipe establishing timeout, disconnected connection from %v", conn.RemoteAddr())
+		s.createRecording(1, conn.RemoteAddr().(*net.TCPAddr).IP.String(), nil)
 		return
 	}
 	defer p.Close()
@@ -121,31 +124,36 @@ func (s *SSHServer) handleConnection(conn net.Conn) {
 			return
 		}
 		recorder := newAsciicastLogger(recorddir,
-			p.ChallengeContext().(*challengeContext).Username,
+			p.ChallengeContext().(*challengeContext).User.Username,
 			p.ChallengeContext().(*challengeContext).Target)
 		defer recorder.Close()
 
 		uphook = recorder.uphook
 		downhook = recorder.downhook
 	}
-
 	err := p.WaitWithHook(uphook, downhook)
-
 	log.Infof("connection from %v closed reason: %v", conn.RemoteAddr(), err)
-
-	s.createRecording(p.DownstreamConnMeta(), p.ChallengeContext())
+	if err != nil {
+		s.createRecording(0, conn.RemoteAddr().(*net.TCPAddr).IP.String(), p.ChallengeContext())
+	} else {
+		s.createRecording(1, conn.RemoteAddr().(*net.TCPAddr).IP.String(), p.ChallengeContext())
+	}
 }
 
-func (s *SSHServer) parseUserAndTarget(sshuser string) (string, *common.Target, error) {
+func (s *SSHServer) parseUserAndTarget(sshuser string) (*common.User, *common.Target, error) {
 	seps := strings.SplitN(sshuser, ":", 2)
 	if len(seps) != 2 {
-		return "", nil, errUserFormat
+		return nil, nil, errUserFormat
 	}
-	user := seps[0]
+	username := seps[0]
 	targetName := seps[1]
 	target := s.api.GetTargetByName(targetName)
 	if target == nil {
-		return "", nil, errTargetNotFound
+		return nil, nil, errTargetNotFound
+	}
+	user := s.api.GetUserByName(username)
+	if user == nil {
+		return nil, nil, errUserNotFound
 	}
 	return user, target, nil
 }
@@ -157,10 +165,14 @@ func (s *SSHServer) supportedMethods(conn ssh.ConnMetadata, challengeCtx ssh.Cha
 }
 
 func (s *SSHServer) findAndCreateUpstream(conn ssh.ConnMetadata, publicKey ssh.PublicKey, challengeCtx ssh.ChallengeContext) (*ssh.Upstream, error) {
-	user := challengeCtx.(*challengeContext).Username
+	user := challengeCtx.(*challengeContext).User
 	target := challengeCtx.(*challengeContext).Target
 
-	pubkeys := s.api.GetPubkeysByUsername(user)
+	if user == nil {
+		return nil, fmt.Errorf("no user found")
+	}
+
+	pubkeys := s.api.GetPubkeysByUserID(user.ID)
 	for _, pubkey := range pubkeys {
 		authedPubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubkey.Key))
 		if err != nil {
@@ -201,6 +213,8 @@ func (s *SSHServer) banner(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeCont
 			return "ssh user should be in the format of <username>:<target>.\n"
 		} else if errors.Is(err, errTargetNotFound) {
 			return "no matching target.\n"
+		} else if errors.Is(err, errUserNotFound) {
+			return "no matching user.\n"
 		} else {
 			return ""
 		}
@@ -210,7 +224,7 @@ func (s *SSHServer) banner(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeCont
 		return fmt.Sprintf("target %v is not reachable.\n", target.Name)
 	}
 
-	challengeCtx.(*challengeContext).Username = user
+	challengeCtx.(*challengeContext).User = user
 	challengeCtx.(*challengeContext).Target = target
 	return ""
 }
@@ -228,20 +242,19 @@ func (s *SSHServer) createChallengeContext(conn ssh.ConnMetadata) (ssh.Challenge
 	return ctx, nil
 }
 
-func (p *SSHServer) createRecording(_ ssh.ConnMetadata, challengeCtx ssh.ChallengeContext) {
-	username := challengeCtx.(*challengeContext).Username
-	target := challengeCtx.(*challengeContext).Target
-
-	user := p.api.GetUserByName(username)
-
-	if user == nil {
-		return
-	}
+func (p *SSHServer) createRecording(status int, IP string, challengeCtx ssh.ChallengeContext) {
 
 	recording := common.Recording{
-		UserID:   user.ID,
-		TargetID: target.ID,
-		RecordID: challengeCtx.(*challengeContext).UniqID,
+		IP:     IP,
+		Status: status,
+	}
+
+	if status == 0 {
+		user := challengeCtx.(*challengeContext).User
+		target := challengeCtx.(*challengeContext).Target
+		recording.RecordID = challengeCtx.(*challengeContext).UniqID
+		recording.UserID = user.ID
+		recording.TargetID = target.ID
 	}
 
 	p.api.CreateRecording(recording)
