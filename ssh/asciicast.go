@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/color"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -74,8 +73,7 @@ func newAsciicastLogger(recorddir string, user string, target *common.Target) *a
 
 func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []byte {
 	messageBuf := bytes.NewBuffer(nil)
-	color.New(color.BgGreen, color.FgBlack, color.Bold).Fprintf(messageBuf, " ✓ SSHMUX connected ")
-	color.New(color.Reset, color.ResetBold).Fprintf(messageBuf, " pipe %s to %s\n\r", l.user, l.target.Name)
+	fmt.Fprintf(messageBuf, "\x1b[42;1;38;5;232m ✓ SSHMUX connected \x1b[0m pipe %s to %s\n\r", l.user, l.target.Name)
 	message := messageBuf.Bytes()
 
 	msg2 := []byte{msgChannelData}
