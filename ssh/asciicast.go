@@ -98,7 +98,7 @@ func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
 		clientChannelID := binary.BigEndian.Uint32(msg[1:5])
 
 		meta, ok := l.channels[clientChannelID]
-		if ok {
+		if ok && meta.f != nil {
 			buf := msg[9:]
 			t := time.Since(meta.starttime).Seconds()
 
