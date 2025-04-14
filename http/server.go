@@ -117,7 +117,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 	server.app.Use(sessions.Sessions("sshmux", sessionStore))
 
 	gv := ginview.New(goview.Config{
-		Root:         "templates",
+		Root:         "../http/templates",
 		Extension:    ".tmpl",
 		Master:       "layout",
 		DisableCache: true,
@@ -136,7 +136,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 		},
 	})
 
-	gv.SetFileHandler(embeddedFH)
+	// gv.SetFileHandler(embeddedFH)
 
 	server.app.HTMLRender = gv
 

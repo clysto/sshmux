@@ -160,9 +160,7 @@
                 {{.Description}}
               </p>
               <p class="card-text font-monospace" style="font-size: 14px">
-                <strong>Host:</strong>
-                {{.Host}}
-                <br />
+                <span class="line-clamp"><strong>Host:</strong> {{.Host}}</span>
                 <strong>Port:</strong>
                 {{.Port}}
                 <br />
@@ -172,7 +170,7 @@
               <div>
                 <button
                   type="button"
-                  class="btn btn-sm btn-outline-secondary"
+                  class="btn btn-sm"
                   data-bs-toggle="modal"
                   data-bs-target="#targetModal"
                   data-action="update"
@@ -188,7 +186,7 @@
                 </button>
                 <button
                   type="button"
-                  class="btn btn-sm btn-outline-secondary"
+                  class="btn btn-sm"
                   data-bs-toggle="modal"
                   data-bs-target="#deleteTargetModal"
                   data-id="{{.ID}}"

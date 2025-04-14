@@ -2,7 +2,7 @@ module sshmux
 
 go 1.23.0
 
-replace golang.org/x/crypto => github.com/tg123/sshpiper.crypto v0.27.0-sshpiper-20240908
+replace golang.org/x/crypto => github.com/tg123/sshpiper.crypto v0.36.0-sshpiper-20250320
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -55,8 +55,8 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/libc v1.22.5 // indirect

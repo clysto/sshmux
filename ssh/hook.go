@@ -53,7 +53,7 @@ type channelMeta struct {
 	f               *os.File
 }
 
-type asciicastLogger struct {
+type sshmuxHook struct {
 	channels     map[uint32]*channelMeta
 	channelIDMap map[uint32]uint32
 	recorddir    string
@@ -61,8 +61,8 @@ type asciicastLogger struct {
 	target       *common.Target
 }
 
-func newAsciicastLogger(recorddir string, user string, target *common.Target) *asciicastLogger {
-	return &asciicastLogger{
+func newSshmuxHook(recorddir string, user string, target *common.Target) *sshmuxHook {
+	return &sshmuxHook{
 		recorddir:    recorddir,
 		channels:     make(map[uint32]*channelMeta),
 		channelIDMap: make(map[uint32]uint32),
@@ -71,7 +71,7 @@ func newAsciicastLogger(recorddir string, user string, target *common.Target) *a
 	}
 }
 
-func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []byte {
+func (l *sshmuxHook) prependBanner(clientChannelID uint32, buf []byte) []byte {
 	messageBuf := bytes.NewBuffer(nil)
 	fmt.Fprintf(messageBuf, "\x1b[42;1;38;5;232m ✓ SSHMUX connected \x1b[0m pipe %s to %s\n\r", l.user, l.target.Name)
 	message := messageBuf.Bytes()
@@ -84,7 +84,7 @@ func (l *asciicastLogger) prependBanner(clientChannelID uint32, buf []byte) []by
 	return msg2
 }
 
-func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
+func (l *sshmuxHook) uphook(msg []byte) ([]byte, error) {
 	if msg[0] == 80 {
 		// filter host keys requests
 		var x struct {
@@ -123,7 +123,7 @@ func (l *asciicastLogger) uphook(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
-func (l *asciicastLogger) downhook(msg []byte) ([]byte, error) {
+func (l *sshmuxHook) downhook(msg []byte) ([]byte, error) {
 	if msg[0] == msgChannelRequest {
 		serverChannelID := binary.BigEndian.Uint32(msg[1:5])
 		clientChannelID := l.channelIDMap[serverChannelID]
@@ -206,7 +206,7 @@ func (l *asciicastLogger) downhook(msg []byte) ([]byte, error) {
 	return msg, nil
 }
 
-func (l *asciicastLogger) Close() (err error) {
+func (l *sshmuxHook) Close() (err error) {
 	for _, meta := range l.channels {
 		_ = meta.f.Close()
 	}

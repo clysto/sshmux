@@ -22,6 +22,7 @@
     </div>
   </div>
   {{ if eq .recording.Status 0 }}
+  {{ if len .channels }}
   <select class="form-select mb-2" id="channel-select">
     {{
       range.channels
@@ -31,7 +32,6 @@
       end
     }}
   </select>
-
   <div id="recording"></div>
 
   <script src="/static/assets/asciinema-player.min.js"></script>
@@ -51,6 +51,7 @@
       );
     });
   </script>
+  {{ end }}
   {{ end }}
   <div
     class="modal fade"

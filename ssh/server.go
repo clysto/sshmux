@@ -121,7 +121,7 @@ func (s *SSHServer) handleConnection(conn net.Conn) {
 			log.Errorf("cannot create screen recording dir %v: %v", recorddir, err)
 			return
 		}
-		recorder := newAsciicastLogger(recorddir,
+		recorder := newSshmuxHook(recorddir,
 			p.ChallengeContext().(*challengeContext).User.Username,
 			p.ChallengeContext().(*challengeContext).Target)
 		defer recorder.Close()
