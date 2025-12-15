@@ -2,7 +2,7 @@ module sshmux
 
 go 1.24.0
 
-replace golang.org/x/crypto => github.com/tg123/sshpiper.crypto v0.45.0-sshpiper-20251119
+replace golang.org/x/crypto => github.com/tg123/sshpiper.crypto v0.36.0-sshpiper-20250320
 
 require (
 	github.com/BurntSushi/toml v1.3.2
