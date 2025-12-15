@@ -50,7 +50,8 @@ func (s *HTTPServer) Home(c *gin.Context) {
 
 func (s *HTTPServer) Login(c *gin.Context) {
 	session := sessions.Default(c)
-	if c.Request.Method == "GET" {
+	switch c.Request.Method {
+	case "GET":
 		// Generate a random oidc state
 		state := RandState()
 		session.Set("oauth_state", state)
@@ -71,7 +72,7 @@ func (s *HTTPServer) Login(c *gin.Context) {
 			"ssos":   ssos,
 			"errors": errorFlashes,
 		})
-	} else if c.Request.Method == "POST" {
+	case "POST":
 		username := c.PostForm("username")
 		password := c.PostForm("password")
 
@@ -462,14 +463,15 @@ func (s *HTTPServer) ChangeUserName(c *gin.Context) {
 		user = v.(common.User)
 	}
 
-	if c.Request.Method == "GET" {
+	switch c.Request.Method {
+	case "GET":
 		errorFlashes := session.Flashes("error")
 		session.Save()
 		ReturnHTML(c, "username", gin.H{
 			"user":   user,
 			"errors": errorFlashes,
 		})
-	} else if c.Request.Method == "POST" {
+	case "POST":
 		username := c.PostForm("username")
 		if username == "" {
 			session.AddFlash("Username cannot be empty.", "error")

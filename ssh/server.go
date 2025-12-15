@@ -47,10 +47,10 @@ type SSHServer struct {
 
 func (s *SSHServer) Start() error {
 	s.config = &ssh.PiperConfig{
-		CreateChallengeContext: s.createChallengeContext,
-		NextAuthMethods:        s.supportedMethods,
-		PublicKeyCallback:      s.findAndCreateUpstream,
-		BannerCallback:         s.banner,
+		CreateChallengeContext:   s.createChallengeContext,
+		NextAuthMethods:          s.supportedMethods,
+		PublicKeyCallback:        s.findAndCreateUpstream,
+		DownstreamBannerCallback: s.banner,
 	}
 	private, err := ssh.ParsePrivateKey(s.hostKey)
 	if err != nil {
@@ -110,8 +110,8 @@ func (s *SSHServer) handleConnection(conn net.Conn) {
 
 	log.Infof("ssh connection pipe created %v (username [%v]) -> %v (username [%v])", p.DownstreamConnMeta().RemoteAddr(), p.DownstreamConnMeta().User(), p.UpstreamConnMeta().RemoteAddr(), p.UpstreamConnMeta().User())
 
-	var uphook func([]byte) ([]byte, error)
-	var downhook func([]byte) ([]byte, error)
+	var uphook ssh.PipePacketHook
+	var downhook ssh.PipePacketHook
 	if s.recorddir != "" {
 		var recorddir string
 		uniqID := p.ChallengeContext().(*challengeContext).UniqID
@@ -227,7 +227,7 @@ func (s *SSHServer) banner(conn ssh.ConnMetadata, challengeCtx ssh.ChallengeCont
 	return ""
 }
 
-func (s *SSHServer) createChallengeContext(conn ssh.ConnMetadata) (ssh.ChallengeContext, error) {
+func (s *SSHServer) createChallengeContext(downconn ssh.ServerPreAuthConn) (ssh.ChallengeContext, error) {
 	uiq, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err

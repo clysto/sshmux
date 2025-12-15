@@ -84,7 +84,7 @@ func (l *sshmuxHook) prependBanner(clientChannelID uint32, buf []byte) []byte {
 	return msg2
 }
 
-func (l *sshmuxHook) uphook(msg []byte) ([]byte, error) {
+func (l *sshmuxHook) uphook(msg []byte) (ssh.PipePacketHookMethod, []byte, error) {
 	if msg[0] == 80 {
 		// filter host keys requests
 		var x struct {
@@ -92,7 +92,7 @@ func (l *sshmuxHook) uphook(msg []byte) ([]byte, error) {
 		}
 		_ = ssh.Unmarshal(msg, &x)
 		if x.RequestName == "hostkeys-prove-00@openssh.com" || x.RequestName == "hostkeys-00@openssh.com" {
-			return nil, nil
+			return ssh.PipePacketHookTransform, nil, nil
 		}
 	} else if msg[0] == msgChannelData {
 		clientChannelID := binary.BigEndian.Uint32(msg[1:5])
@@ -105,13 +105,13 @@ func (l *sshmuxHook) uphook(msg []byte) ([]byte, error) {
 			_, err := fmt.Fprintf(meta.f, "[%v,\"o\",\"%s\"]\n", t, jsonEscape(string(buf)))
 
 			if err != nil {
-				return msg, err
+				return ssh.PipePacketHookTransform, msg, err
 			}
 
 			if !meta.displayedBanner {
 				meta.displayedBanner = true
 				if meta.envs["TERM"] == "xterm-color" || strings.HasSuffix(meta.envs["TERM"], "-256color") {
-					return l.prependBanner(clientChannelID, buf), nil
+					return ssh.PipePacketHookTransform, l.prependBanner(clientChannelID, buf), nil
 				}
 			}
 		}
@@ -120,10 +120,10 @@ func (l *sshmuxHook) uphook(msg []byte) ([]byte, error) {
 		serverChannelID := binary.BigEndian.Uint32(msg[5:9])
 		l.channelIDMap[serverChannelID] = clientChannelID
 	}
-	return msg, nil
+	return ssh.PipePacketHookTransform, msg, nil
 }
 
-func (l *sshmuxHook) downhook(msg []byte) ([]byte, error) {
+func (l *sshmuxHook) downhook(msg []byte) (ssh.PipePacketHookMethod, []byte, error) {
 	if msg[0] == msgChannelRequest {
 		serverChannelID := binary.BigEndian.Uint32(msg[1:5])
 		clientChannelID := l.channelIDMap[serverChannelID]
@@ -156,13 +156,13 @@ func (l *sshmuxHook) downhook(msg []byte) ([]byte, error) {
 			t := time.Since(meta.starttime).Seconds()
 			_, err := fmt.Fprintf(meta.f, "[%v,\"r\", \"%vx%v\"]\n", t, width, height)
 			if err != nil {
-				return msg, err
+				return ssh.PipePacketHookTransform, msg, err
 			}
 		case "shell", "exec":
 			jsonEnvs, err := json.Marshal(meta.envs)
 
 			if err != nil {
-				return msg, err
+				return ssh.PipePacketHookTransform, msg, err
 			}
 
 			f, err := os.OpenFile(
@@ -172,7 +172,7 @@ func (l *sshmuxHook) downhook(msg []byte) ([]byte, error) {
 			)
 
 			if err != nil {
-				return msg, err
+				return ssh.PipePacketHookTransform, msg, err
 			}
 
 			meta.f = f
@@ -199,11 +199,11 @@ func (l *sshmuxHook) downhook(msg []byte) ([]byte, error) {
 			_, err = fmt.Fprint(meta.f, header)
 
 			if err != nil {
-				return msg, err
+				return ssh.PipePacketHookTransform, msg, err
 			}
 		}
 	}
-	return msg, nil
+	return ssh.PipePacketHookTransform, msg, nil
 }
 
 func (l *sshmuxHook) Close() (err error) {
