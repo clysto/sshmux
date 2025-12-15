@@ -17,7 +17,7 @@
             <div class="text-secondary small">{{.Description}}</div>
           </div>
         </div>
-        <div class="list-group list-group-flush">
+        <div class="list-group">
           {{ $root := $ }}
           {{ range .Targets }}
             <button
@@ -66,10 +66,9 @@
       <div class="d-flex align-items-center justify-content-between mb-2">
         <div>
           <div class="h6 mb-0">Others</div>
-          <div class="text-secondary small">未分组的目标</div>
         </div>
       </div>
-      <div class="list-group list-group-flush">
+      <div class="list-group">
         {{ $root := $ }}
         {{ range .ungroupedTargets }}
           <button

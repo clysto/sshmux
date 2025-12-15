@@ -179,7 +179,6 @@
                 data-id="{{.ID}}"
                 data-title="{{.Title}}"
                 data-description="{{.Description}}"
-                data-order="{{.DisplayOrder}}"
               >
                 <i class="bi bi-pencil"></i>
                 Edit
@@ -197,7 +196,7 @@
               </button>
             </div>
           </div>
-          <div class="list-group target-list" data-target-list data-group-id="{{.ID}}">
+          <div class="list-group" data-target-list data-group-id="{{.ID}}">
             {{ range .Targets }}
             <div
               class="list-group-item d-flex align-items-center target-row"
@@ -209,7 +208,6 @@
               data-port="{{.Port}}"
               data-user="{{.User}}"
               data-desc="{{.Description}}"
-              data-order="{{.DisplayOrder}}"
             >
               <span class="me-3 text-secondary" style="cursor: grab;">&#8942;</span>
               <div class="flex-grow-1">
@@ -220,9 +218,8 @@
                 </div>
               </div>
             </div>
-            {{ end }}
-            {{ if not (gt (len .Targets) 0) }}
-            <div class="text-secondary small p-2">No targets in this group.</div>
+            {{ else }}
+            <div class="list-group-item text-secondary small empty-placeholder">No targets in this group.</div>
             {{ end }}
           </div>
         </div>
@@ -236,7 +233,7 @@
             <div class="fw-semibold">Ungrouped</div>
           </div>
         </div>
-        <div class="list-group target-list" data-target-list data-group-id="">
+        <div class="list-group" data-target-list data-group-id="">
           {{ range .ungroupedTargets }}
           <div
             class="list-group-item d-flex align-items-center target-row"
@@ -252,10 +249,9 @@
                 {{.User}}@{{.Host}}:{{.Port}}
               </div>
             </div>
-            <span class="text-secondary small">Order {{.DisplayOrder}}</span>
           </div>
           {{ else }}
-          <div class="text-secondary small p-2">No targets in this group.</div>
+          <div class="list-group-item text-secondary small empty-placeholder">No targets in this group.</div>
           {{ end }}
         </div>
       </div>
@@ -349,10 +345,6 @@
             <label for="targetDesc" class="form-label">Description</label>
           </div>
           <div class="mb-3 form-floating">
-            <input type="number" class="form-control" id="targetOrder" name="displayOrder" value="0" required />
-            <label for="targetOrder" class="form-label">Display Order</label>
-          </div>
-          <div class="mb-3 form-floating">
             <input type="text" class="form-control" id="targetHost" name="host" required />
             <label for="targetHost" class="form-label">Host</label>
           </div>
@@ -432,10 +424,6 @@
             <input type="text" class="form-control" id="groupDescription" name="description" />
             <label for="groupDescription" class="form-label">Description</label>
           </div>
-          <div class="form-floating">
-            <input type="number" class="form-control" id="groupOrder" name="displayOrder" value="0" required />
-            <label for="groupOrder" class="form-label">Display Order</label>
-          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -498,7 +486,6 @@
       targetForm.action = '/target';
       document.getElementById('targetName').value = '';
       document.getElementById('targetDesc').value = '';
-      document.getElementById('targetOrder').value = '0';
       document.getElementById('targetHost').value = '';
       document.getElementById('targetPort').value = '';
       document.getElementById('targetUser').value = '';
@@ -512,7 +499,6 @@
       document.getElementById('targetPort').value = data.port || '';
       document.getElementById('targetUser').value = data.user || '';
       document.getElementById('targetDesc').value = data.desc || '';
-      document.getElementById('targetOrder').value = data.order || '0';
       document.getElementById('targetGroup').value = data.group || '';
       deleteBtn.classList.remove('d-none');
       deleteBtn.setAttribute('data-id', data.id);
@@ -531,7 +517,6 @@
       port: button.getAttribute('data-port'),
       user: button.getAttribute('data-user'),
       desc: button.getAttribute('data-desc'),
-      order: button.getAttribute('data-order'),
       group: button.getAttribute('data-group'),
     };
     fillTargetModal(action, data);
@@ -562,18 +547,15 @@
       groupForm.action = '/target-group';
       document.getElementById('groupTitle').value = '';
       document.getElementById('groupDescription').value = '';
-      document.getElementById('groupOrder').value = '0';
     } else if (action === 'update') {
       const id = button.getAttribute('data-id');
       const title = button.getAttribute('data-title');
       const description = button.getAttribute('data-description');
-      const order = button.getAttribute('data-order') || '0';
 
       modalTitle.textContent = 'Edit Group';
       groupForm.action = '/target-group/update/' + id;
       document.getElementById('groupTitle').value = title;
       document.getElementById('groupDescription').value = description;
-      document.getElementById('groupOrder').value = order;
     }
   });
 
@@ -682,8 +664,26 @@
     const list = e.target.closest('[data-target-list]');
     if (list && draggedTarget.parentNode !== list) {
       list.appendChild(draggedTarget);
+      draggedTarget.setAttribute('data-group-id', list.getAttribute('data-group-id') || '');
+      draggedTarget.setAttribute('data-group', list.getAttribute('data-group-id') || '');
     }
+    refreshEmptyPlaceholders();
     saveTargetOrder();
+  };
+
+  const refreshEmptyPlaceholders = () => {
+    document.querySelectorAll('[data-target-list]').forEach((list) => {
+      const hasTargets = list.querySelector('.target-row') !== null;
+      const placeholder = list.querySelector('.empty-placeholder');
+      if (hasTargets && placeholder) {
+        placeholder.remove();
+      } else if (!hasTargets && !placeholder) {
+        const ph = document.createElement('div');
+        ph.className = 'list-group-item text-secondary small empty-placeholder';
+        ph.textContent = 'No targets in this group.';
+        list.appendChild(ph);
+      }
+    });
   };
 
   const collectTargetOrderPayload = () => {
@@ -728,7 +728,6 @@
         port: row.getAttribute('data-port'),
         user: row.getAttribute('data-user'),
         desc: row.getAttribute('data-desc'),
-        order: row.getAttribute('data-order') || '0',
         group: row.getAttribute('data-group-id') || '',
       };
       fillTargetModal('update', data);
@@ -739,6 +738,8 @@
     list.addEventListener('dragover', handleTargetDragOver);
     list.addEventListener('drop', handleTargetDrop);
   });
+
+  refreshEmptyPlaceholders();
 </script>
 {{ end }}
 

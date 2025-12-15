@@ -127,7 +127,16 @@ func (api *API) UpdateTarget(target Target) error {
 	if target.TargetGroupID != nil && api.GetTargetGroupByID(int(*target.TargetGroupID)) == nil {
 		return errors.New("target group not found")
 	}
-	return api.db.Save(&target).Error
+	updates := map[string]interface{}{
+		"name":            target.Name,
+		"description":     target.Description,
+		"host":            target.Host,
+		"port":            target.Port,
+		"user":            target.User,
+		"display_order":   target.DisplayOrder,
+		"target_group_id": target.TargetGroupID,
+	}
+	return api.db.Model(&Target{}).Where("id = ?", target.ID).Updates(updates).Error
 }
 
 type TargetGroupOrder struct {

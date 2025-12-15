@@ -425,11 +425,7 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 	}
 	user := c.PostForm("user")
 	desc := c.PostForm("description")
-	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
-	if err != nil {
-		ReturnError(c, http.StatusBadRequest, "Invalid display order")
-		return
-	}
+	displayOrderStr := strings.TrimSpace(c.PostForm("displayOrder"))
 
 	groupIDStr := strings.TrimSpace(c.PostForm("groupId"))
 	var groupID *uint
@@ -448,6 +444,16 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 		ReturnError(c, http.StatusBadRequest, "Invalid target ID")
 		return
 	}
+
+	displayOrder := target.DisplayOrder
+	if displayOrderStr != "" {
+		displayOrder, err = strconv.Atoi(displayOrderStr)
+		if err != nil {
+			ReturnError(c, http.StatusBadRequest, "Invalid display order")
+			return
+		}
+	}
+
 	target.Name = name
 	target.Host = host
 	target.Port = int32(port)
@@ -515,16 +521,23 @@ func (s *HTTPServer) UpdateTargetGroup(c *gin.Context) {
 
 	title := c.PostForm("title")
 	description := c.PostForm("description")
-	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
-	if err != nil {
-		ReturnError(c, http.StatusBadRequest, "Invalid display order")
-		return
-	}
+	displayOrder := 0
 
 	group := s.api.GetTargetGroupByID(id)
 	if group == nil {
 		ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
 		return
+	}
+
+	displayOrderStr := strings.TrimSpace(c.PostForm("displayOrder"))
+	if displayOrderStr == "" {
+		displayOrder = group.DisplayOrder
+	} else {
+		displayOrder, err = strconv.Atoi(displayOrderStr)
+		if err != nil {
+			ReturnError(c, http.StatusBadRequest, "Invalid display order")
+			return
+		}
 	}
 
 	group.Title = title
