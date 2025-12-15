@@ -17,12 +17,21 @@ import (
 )
 
 func (s *HTTPServer) Home(c *gin.Context) {
-	query := c.Query("q")
-	var targets []common.Target
+	query := strings.TrimSpace(c.Query("q"))
+	targetGroups := s.api.ListTargetGroupsWithTargets()
+	ungroupedTargets := s.api.ListUngroupedTargets()
+
 	if query != "" {
-		targets = s.api.SearchTargets(query)
-	} else {
-		targets = s.api.ListTargets()
+		targetGroups = filterTargetGroups(targetGroups, query)
+		ungroupedTargets = filterTargets(ungroupedTargets, query)
+	}
+
+	hasTargets := len(ungroupedTargets) > 0
+	for _, g := range targetGroups {
+		if len(g.Targets) > 0 {
+			hasTargets = true
+			break
+		}
 	}
 
 	now := time.Now()
@@ -41,10 +50,12 @@ func (s *HTTPServer) Home(c *gin.Context) {
 	}
 
 	ReturnHTML(c, "index", gin.H{
-		"targets":      targets,
-		"sshpiperHost": s.sshpiperHost,
-		"sshpiperPort": s.sshpiperPort,
-		"uptime":       uptime,
+		"targetGroups":     targetGroups,
+		"ungroupedTargets": ungroupedTargets,
+		"sshpiperHost":     s.sshpiperHost,
+		"sshpiperPort":     s.sshpiperPort,
+		"uptime":           uptime,
+		"hasTargets":       hasTargets,
 	})
 }
 
@@ -301,10 +312,12 @@ func (s *HTTPServer) Admin(c *gin.Context) {
 			"tab": tab,
 		})
 	case "targets":
-		targets := s.api.ListTargets()
+		targetGroups := s.api.ListTargetGroupsWithTargets()
+		ungroupedTargets := s.api.ListUngroupedTargets()
 		ReturnHTML(c, "admin", gin.H{
-			"targets": targets,
-			"tab":     tab,
+			"targetGroups":     targetGroups,
+			"ungroupedTargets": ungroupedTargets,
+			"tab":              tab,
 		})
 	case "users":
 		page, err := strconv.Atoi(c.Query("page"))
@@ -361,13 +374,32 @@ func (s *HTTPServer) CreateTarget(c *gin.Context) {
 	}
 	user := c.PostForm("user")
 	desc := c.PostForm("description")
+	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid display order")
+		return
+	}
+
+	groupIDStr := strings.TrimSpace(c.PostForm("groupId"))
+	var groupID *uint
+	if groupIDStr != "" {
+		gid, err := strconv.Atoi(groupIDStr)
+		if err != nil {
+			ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
+			return
+		}
+		tmp := uint(gid)
+		groupID = &tmp
+	}
 
 	err = s.api.CreateTarget(common.Target{
-		Name:        name,
-		Host:        host,
-		Port:        int32(port),
-		User:        user,
-		Description: desc,
+		Name:          name,
+		Host:          host,
+		Port:          int32(port),
+		User:          user,
+		Description:   desc,
+		DisplayOrder:  displayOrder,
+		TargetGroupID: groupID,
 	})
 	if err != nil {
 		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create target: %v", err))
@@ -393,6 +425,23 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 	}
 	user := c.PostForm("user")
 	desc := c.PostForm("description")
+	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid display order")
+		return
+	}
+
+	groupIDStr := strings.TrimSpace(c.PostForm("groupId"))
+	var groupID *uint
+	if groupIDStr != "" {
+		gid, err := strconv.Atoi(groupIDStr)
+		if err != nil {
+			ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
+			return
+		}
+		tmp := uint(gid)
+		groupID = &tmp
+	}
 
 	target := s.api.GetTargetById(id)
 	if target == nil {
@@ -404,6 +453,8 @@ func (s *HTTPServer) UpdateTarget(c *gin.Context) {
 	target.Port = int32(port)
 	target.User = user
 	target.Description = desc
+	target.DisplayOrder = displayOrder
+	target.TargetGroupID = groupID
 
 	err = s.api.UpdateTarget(*target)
 	if err != nil {
@@ -426,6 +477,129 @@ func (s *HTTPServer) DeleteTarget(c *gin.Context) {
 		return
 	}
 	c.Redirect(http.StatusFound, "/admin?tab=targets")
+}
+
+func (s *HTTPServer) CreateTargetGroup(c *gin.Context) {
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid display order")
+		return
+	}
+
+	if title == "" {
+		ReturnError(c, http.StatusBadRequest, "Title cannot be empty")
+		return
+	}
+
+	err = s.api.CreateTargetGroup(common.TargetGroup{
+		Title:        title,
+		Description:  description,
+		DisplayOrder: displayOrder,
+	})
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to create target group: %v", err))
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin?tab=targets")
+}
+
+func (s *HTTPServer) UpdateTargetGroup(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
+		return
+	}
+
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+	displayOrder, err := strconv.Atoi(c.DefaultPostForm("displayOrder", "0"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid display order")
+		return
+	}
+
+	group := s.api.GetTargetGroupByID(id)
+	if group == nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
+		return
+	}
+
+	group.Title = title
+	group.Description = description
+	group.DisplayOrder = displayOrder
+
+	if err := s.api.UpdateTargetGroup(*group); err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to update target group: %v", err))
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin?tab=targets")
+}
+
+func (s *HTTPServer) DeleteTargetGroup(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid target group ID")
+		return
+	}
+
+	if err := s.api.DeleteTargetGroup(id); err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to delete target group: %v", err))
+		return
+	}
+
+	c.Redirect(http.StatusFound, "/admin?tab=targets")
+}
+
+type reorderTargetGroupsRequest struct {
+	GroupIDs []uint `json:"groupIds"`
+}
+
+type targetGroupOrderPayload struct {
+	GroupID   uint   `json:"groupId"`
+	TargetIDs []uint `json:"targetIds"`
+}
+
+type reorderTargetsRequest struct {
+	Groups    []targetGroupOrderPayload `json:"groups"`
+	Ungrouped []uint                    `json:"ungrouped"`
+}
+
+func (s *HTTPServer) ReorderTargetGroups(c *gin.Context) {
+	var req reorderTargetGroupsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid payload")
+		return
+	}
+	if err := s.api.ReorderTargetGroups(req.GroupIDs); err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to reorder groups: %v", err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (s *HTTPServer) ReorderTargets(c *gin.Context) {
+	var req reorderTargetsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ReturnError(c, http.StatusBadRequest, "Invalid payload")
+		return
+	}
+	var groups []common.TargetGroupOrder
+	for _, g := range req.Groups {
+		groups = append(groups, common.TargetGroupOrder{
+			GroupID:   g.GroupID,
+			TargetIDs: g.TargetIDs,
+		})
+	}
+
+	if err := s.api.ReorderTargets(groups, req.Ungrouped); err != nil {
+		ReturnError(c, http.StatusBadRequest, fmt.Sprintf("Failed to reorder targets: %v", err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 func (s *HTTPServer) DeleteUser(c *gin.Context) {
@@ -520,6 +694,41 @@ func (s *HTTPServer) ChangeUserName(c *gin.Context) {
 
 		c.Redirect(http.StatusFound, "/keys")
 	}
+}
+
+func filterTargets(targets []common.Target, query string) []common.Target {
+	if query == "" {
+		return targets
+	}
+	lowerQuery := strings.ToLower(query)
+	var filtered []common.Target
+	for _, t := range targets {
+		if strings.Contains(strings.ToLower(t.Name), lowerQuery) || strings.Contains(strings.ToLower(t.Description), lowerQuery) {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
+}
+
+func filterTargetGroups(groups []common.TargetGroup, query string) []common.TargetGroup {
+	if query == "" {
+		return groups
+	}
+
+	var filtered []common.TargetGroup
+	for _, g := range groups {
+		groupMatches := strings.Contains(strings.ToLower(g.Title), strings.ToLower(query)) ||
+			strings.Contains(strings.ToLower(g.Description), strings.ToLower(query))
+		targets := g.Targets
+		if !groupMatches {
+			targets = filterTargets(g.Targets, query)
+		}
+		if groupMatches || len(targets) > 0 {
+			g.Targets = targets
+			filtered = append(filtered, g)
+		}
+	}
+	return filtered
 }
 
 func HandleNotFound(c *gin.Context) {

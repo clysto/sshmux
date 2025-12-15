@@ -36,7 +36,7 @@ func NewAPI(dbPath string) (*API, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := db.AutoMigrate(&Target{}, &Pubkey{}, &SSOCredential{}, &User{}, &Recording{}); err != nil {
+	if err := db.AutoMigrate(&TargetGroup{}, &Target{}, &Pubkey{}, &SSOCredential{}, &User{}, &Recording{}); err != nil {
 		return nil, err
 	}
 	return &API{db: db}, nil
@@ -44,7 +44,7 @@ func NewAPI(dbPath string) (*API, error) {
 
 func (api *API) GetTargetByName(name string) *Target {
 	var target Target
-	if api.db.Where("name = ?", name).First(&target).Error != nil {
+	if api.db.Preload("TargetGroup").Where("name = ?", name).First(&target).Error != nil {
 		return nil
 	}
 	return &target
@@ -52,7 +52,7 @@ func (api *API) GetTargetByName(name string) *Target {
 
 func (api *API) GetTargetById(id int) *Target {
 	var target Target
-	if api.db.Where("id = ?", id).First(&target).Error != nil {
+	if api.db.Preload("TargetGroup").Where("id = ?", id).First(&target).Error != nil {
 		return nil
 	}
 	return &target
@@ -60,20 +60,57 @@ func (api *API) GetTargetById(id int) *Target {
 
 func (api *API) ListTargets() []Target {
 	var targets []Target
-	api.db.Find(&targets)
+	api.db.Preload("TargetGroup").Order("display_order asc, id asc").Find(&targets)
 	return targets
 }
 
 func (api *API) SearchTargets(q string) []Target {
 	var targets []Target
-	api.db.Where("name LIKE ?", "%"+q+"%").Find(&targets)
+	api.db.Preload("TargetGroup").Where("name LIKE ?", "%"+q+"%").Order("display_order asc, id asc").Find(&targets)
 	return targets
+}
+
+func (api *API) ListTargetGroupsWithTargets() []TargetGroup {
+	var groups []TargetGroup
+	api.db.Preload("Targets", func(db *gorm.DB) *gorm.DB {
+		return db.Order("display_order asc, id asc")
+	}).Order("display_order asc, id asc").Find(&groups)
+	return groups
+}
+
+func (api *API) ListUngroupedTargets() []Target {
+	var targets []Target
+	api.db.Where("target_group_id IS NULL").Order("display_order asc, id asc").Find(&targets)
+	return targets
+}
+
+func (api *API) GetTargetGroupByID(id int) *TargetGroup {
+	var group TargetGroup
+	if api.db.Where("id = ?", id).First(&group).Error != nil {
+		return nil
+	}
+	return &group
+}
+
+func (api *API) CreateTargetGroup(group TargetGroup) error {
+	return api.db.Create(&group).Error
+}
+
+func (api *API) UpdateTargetGroup(group TargetGroup) error {
+	return api.db.Save(&group).Error
+}
+
+func (api *API) DeleteTargetGroup(id int) error {
+	return api.db.Unscoped().Where("id = ?", id).Delete(&TargetGroup{}).Error
 }
 
 func (api *API) CreateTarget(target Target) error {
 	r := regexp.MustCompile("^[a-zA-Z0-9_-]+$")
 	if !r.MatchString(target.Name) {
 		return errors.New("target name must only contain alphanumeric characters, dashes, and underscores")
+	}
+	if target.TargetGroupID != nil && api.GetTargetGroupByID(int(*target.TargetGroupID)) == nil {
+		return errors.New("target group not found")
 	}
 	return api.db.Create(&target).Error
 }
@@ -87,7 +124,51 @@ func (api *API) UpdateTarget(target Target) error {
 	if !r.MatchString(target.Name) {
 		return errors.New("target name must only contain alphanumeric characters, dashes, and underscores")
 	}
+	if target.TargetGroupID != nil && api.GetTargetGroupByID(int(*target.TargetGroupID)) == nil {
+		return errors.New("target group not found")
+	}
 	return api.db.Save(&target).Error
+}
+
+type TargetGroupOrder struct {
+	GroupID   uint
+	TargetIDs []uint
+}
+
+func (api *API) ReorderTargetGroups(groupIDs []uint) error {
+	return api.db.Transaction(func(tx *gorm.DB) error {
+		for idx, id := range groupIDs {
+			if err := tx.Model(&TargetGroup{}).Where("id = ?", id).Update("display_order", idx).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (api *API) ReorderTargets(groups []TargetGroupOrder, ungrouped []uint) error {
+	return api.db.Transaction(func(tx *gorm.DB) error {
+		for _, g := range groups {
+			for idx, targetID := range g.TargetIDs {
+				if err := tx.Model(&Target{}).Where("id = ?", targetID).Updates(map[string]interface{}{
+					"display_order":   idx,
+					"target_group_id": g.GroupID,
+				}).Error; err != nil {
+					return err
+				}
+			}
+		}
+
+		for idx, targetID := range ungrouped {
+			if err := tx.Model(&Target{}).Where("id = ?", targetID).Updates(map[string]interface{}{
+				"display_order":   idx,
+				"target_group_id": nil,
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (api *API) GetPubkeysByUserID(userID uint) []Pubkey {

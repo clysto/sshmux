@@ -7,47 +7,113 @@
     </form>
   </div>
 
-  <div class="list-group list-group-flush">
-    {{ range.targets }}
-    <button
-      class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-      data-bs-toggle="modal"
-      data-bs-target="#targetDetailModal"
-      data-name="{{.Name}}"
-      data-host="{{.Host}}"
-      data-port="{{.Port}}"
-      data-user="{{.User}}"
-      data-description="{{.Description}}"
-    >
-      <div>
-        <div>{{.Name}}</div>
-        <div class="text-secondary line-clamp" style="font-size: 12px;">{{.Description}}</div>
-      </div>
-      {{ if (gt (len (index $.uptime .ID)) 0) }}
-      <div class="flex-shrink-0 ms-2">
-        <div class="mt-1" style="font-size: 0;">
-          {{ $len := sub 20 (len (index $.uptime .ID)) }}
-          {{ range seq $len }}
-            <span class="uptime-status bg-secondary"></span>
-          {{ end }}
-          {{ range index $.uptime .ID }}
-            {{ if .Up }}
-              <span class="uptime-status bg-success" title="{{.Time}}"></span>
-            {{ else }}
-              <span class="uptime-status bg-danger" title="{{.Time}}"></span>
-            {{ end }}
-          {{ end }}
+  {{ if .hasTargets }}
+    {{ range .targetGroups }}
+      {{ if (gt (len .Targets) 0) }}
+      <div class="mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div>
+            <div class="h6 mb-0">{{.Title}}</div>
+            <div class="text-secondary small">{{.Description}}</div>
+          </div>
         </div>
-        <div class="d-flex justify-content-between text-secondary" style="font-size: 12px;">
-          <span class="me-2">{{ duration (index (index $.uptime .ID) 0).Time }}</span><span>now</span>
+        <div class="list-group list-group-flush">
+          {{ $root := $ }}
+          {{ range .Targets }}
+            <button
+              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              data-bs-toggle="modal"
+              data-bs-target="#targetDetailModal"
+              data-name="{{.Name}}"
+              data-host="{{.Host}}"
+              data-port="{{.Port}}"
+              data-user="{{.User}}"
+              data-description="{{.Description}}"
+            >
+              <div>
+                <div>{{.Name}}</div>
+                <div class="text-secondary line-clamp" style="font-size: 12px;">{{.Description}}</div>
+              </div>
+              {{ if (gt (len (index $root.uptime .ID)) 0) }}
+              <div class="flex-shrink-0 ms-2">
+                <div class="mt-1" style="font-size: 0;">
+                  {{ $len := sub 20 (len (index $root.uptime .ID)) }}
+                  {{ range seq $len }}
+                    <span class="uptime-status bg-secondary"></span>
+                  {{ end }}
+                  {{ range index $root.uptime .ID }}
+                    {{ if .Up }}
+                      <span class="uptime-status bg-success" title="{{.Time}}"></span>
+                    {{ else }}
+                      <span class="uptime-status bg-danger" title="{{.Time}}"></span>
+                    {{ end }}
+                  {{ end }}
+                </div>
+                <div class="d-flex justify-content-between text-secondary" style="font-size: 12px;">
+                  <span class="me-2">{{ duration (index (index $root.uptime .ID) 0).Time }}</span><span>now</span>
+                </div>
+              </div>
+              {{ end }}
+            </button>
+          {{ end }}
         </div>
       </div>
       {{ end }}
-    </button>
-    {{else}}
-    <p class="list-group-item text-center">No targets found.</p>
     {{ end }}
-  </div>
+
+    {{ if (gt (len .ungroupedTargets) 0) }}
+    <div class="mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div>
+          <div class="h6 mb-0">Others</div>
+          <div class="text-secondary small">未分组的目标</div>
+        </div>
+      </div>
+      <div class="list-group list-group-flush">
+        {{ $root := $ }}
+        {{ range .ungroupedTargets }}
+          <button
+            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+            data-bs-toggle="modal"
+            data-bs-target="#targetDetailModal"
+            data-name="{{.Name}}"
+            data-host="{{.Host}}"
+            data-port="{{.Port}}"
+            data-user="{{.User}}"
+            data-description="{{.Description}}"
+          >
+            <div>
+              <div>{{.Name}}</div>
+              <div class="text-secondary line-clamp" style="font-size: 12px;">{{.Description}}</div>
+            </div>
+            {{ if (gt (len (index $root.uptime .ID)) 0) }}
+            <div class="flex-shrink-0 ms-2">
+              <div class="mt-1" style="font-size: 0;">
+                {{ $len := sub 20 (len (index $root.uptime .ID)) }}
+                {{ range seq $len }}
+                  <span class="uptime-status bg-secondary"></span>
+                {{ end }}
+                {{ range index $root.uptime .ID }}
+                  {{ if .Up }}
+                    <span class="uptime-status bg-success" title="{{.Time}}"></span>
+                  {{ else }}
+                    <span class="uptime-status bg-danger" title="{{.Time}}"></span>
+                  {{ end }}
+                {{ end }}
+              </div>
+              <div class="d-flex justify-content-between text-secondary" style="font-size: 12px;">
+                <span class="me-2">{{ duration (index (index $root.uptime .ID) 0).Time }}</span><span>now</span>
+              </div>
+            </div>
+            {{ end }}
+          </button>
+        {{ end }}
+      </div>
+    </div>
+    {{ end }}
+  {{ else }}
+    <p class="list-group-item text-center">No targets found.</p>
+  {{ end }}
 </div>
 
 <div class="modal fade" id="targetDetailModal" tabindex="-1">

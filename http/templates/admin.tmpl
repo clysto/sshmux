@@ -134,82 +134,130 @@
       {{ if eq .tab "targets" }}
 
       <div class="d-flex justify-content-between align-items-end">
-        <h2 class="h4 mb-0">Targets</h2>
-        <button
-          type="button"
-          class="btn btn-success btn-sm"
-          data-bs-toggle="modal"
-          data-bs-target="#targetModal"
-          data-action="create"
-        >
-          Add new target
-        </button>
+        <div>
+          <h2 class="h4 mb-0">Targets</h2>
+        </div>
+        <div class="d-flex gap-2">
+          <button
+            type="button"
+            class="btn btn-outline-primary btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#groupModal"
+            data-action="create"
+          >
+            Add group
+          </button>
+          <button
+            type="button"
+            class="btn btn-success btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#targetModal"
+            data-action="create"
+          >
+            Add new target
+          </button>
+        </div>
       </div>
       <hr />
-      <div class="d-block d-md-flex flex-wrap justify-content-start align-items-start">
-        {{ range.targets }}
-          <div class="target card text-bg">
-            <div class="card-header">
-              <i class="bi bi-server me-2"></i>
-              <strong>
-                {{.Name}}
-              </strong>
+
+      <div id="groupsContainer" class="mb-4">
+        {{ range .targetGroups }}
+        <div class="group-block list-group-item p-0" data-group-block data-group-id="{{.ID}}" draggable="true">
+          <div class="group-row d-flex align-items-center px-3 py-3" draggable="true" data-group-id="{{.ID}}">
+            <span class="me-3 text-secondary fs-5" style="cursor: grab;">&#9776;</span>
+            <div class="flex-grow-1">
+              <div class="fw-semibold">{{.Title}}</div>
+              <div class="text-secondary small">{{.Description}}</div>
             </div>
-            <div class="card-body">
-              <p class="line-clamp">
-                {{.Description}}
-              </p>
-              <p class="card-text font-monospace" style="font-size: 14px">
-                <span class="line-clamp"><strong>Host:</strong> {{.Host}}</span>
-                <strong>Port:</strong>
-                {{.Port}}
-                <br />
-                <strong>User:</strong>
-                {{.User}}
-              </p>
-              <div>
-                <button
-                  type="button"
-                  class="btn btn-sm"
-                  data-bs-toggle="modal"
-                  data-bs-target="#targetModal"
-                  data-action="update"
-                  data-id="{{.ID}}"
-                  data-name="{{.Name}}"
-                  data-host="{{.Host}}"
-                  data-port="{{.Port}}"
-                  data-user="{{.User}}"
-                  data-desc="{{.Description}}"
-                >
-                  <i class="bi bi-pencil"></i>
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-sm"
-                  data-bs-toggle="modal"
-                  data-bs-target="#deleteTargetModal"
-                  data-id="{{.ID}}"
-                  data-name="{{.Name}}"
-                >
-                  <i class="bi bi-trash"></i>
-                  Delete
-                </button>
-              </div>
+            <div class="d-flex gap-2">
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary"
+                data-bs-toggle="modal"
+                data-bs-target="#groupModal"
+                data-action="update"
+                data-id="{{.ID}}"
+                data-title="{{.Title}}"
+                data-description="{{.Description}}"
+                data-order="{{.DisplayOrder}}"
+              >
+                <i class="bi bi-pencil"></i>
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#deleteGroupModal"
+                data-id="{{.ID}}"
+                data-title="{{.Title}}"
+              >
+                <i class="bi bi-trash"></i>
+                Delete
+              </button>
             </div>
           </div>
-        {{else}}
-        <div class="col">
-          <div class="card h-100 text-center">
-            <div class="card-body">
-              <h5 class="card-title">
-                <i class="bi bi-exclamation-circle"></i>
-                No targets
-              </h5>
+          <div class="list-group target-list" data-target-list data-group-id="{{.ID}}">
+            {{ range .Targets }}
+            <div
+              class="list-group-item d-flex align-items-center target-row"
+              draggable="true"
+              data-target-id="{{.ID}}"
+              data-group-id="{{.TargetGroupID}}"
+              data-name="{{.Name}}"
+              data-host="{{.Host}}"
+              data-port="{{.Port}}"
+              data-user="{{.User}}"
+              data-desc="{{.Description}}"
+              data-order="{{.DisplayOrder}}"
+            >
+              <span class="me-3 text-secondary" style="cursor: grab;">&#8942;</span>
+              <div class="flex-grow-1">
+                <div class="fw-semibold">{{.Name}}</div>
+                <div class="text-secondary small line-clamp">{{.Description}}</div>
+                <div class="font-monospace small text-body-secondary">
+                  {{.User}}@{{.Host}}:{{.Port}}
+                </div>
+              </div>
             </div>
+            {{ end }}
+            {{ if not (gt (len .Targets) 0) }}
+            <div class="text-secondary small p-2">No targets in this group.</div>
+            {{ end }}
           </div>
         </div>
         {{ end }}
+      </div>
+
+      <div class="group-block list-group-item p-0" data-group-block data-group-id="">
+        <div class="group-row d-flex align-items-center px-3 py-2">
+          <span class="me-3 text-secondary fs-5">&#9776;</span>
+          <div class="flex-grow-1">
+            <div class="fw-semibold">Ungrouped</div>
+          </div>
+        </div>
+        <div class="list-group target-list" data-target-list data-group-id="">
+          {{ range .ungroupedTargets }}
+          <div
+            class="list-group-item d-flex align-items-center target-row"
+            draggable="true"
+            data-target-id="{{.ID}}"
+            data-group-id=""
+          >
+            <span class="me-3 text-secondary" style="cursor: grab;">&#8942;</span>
+            <div class="flex-grow-1">
+              <div class="fw-semibold">{{.Name}}</div>
+              <div class="text-secondary small line-clamp">{{.Description}}</div>
+              <div class="font-monospace small text-body-secondary">
+                {{.User}}@{{.Host}}:{{.Port}}
+              </div>
+            </div>
+            <span class="text-secondary small">Order {{.DisplayOrder}}</span>
+          </div>
+          {{ else }}
+          <div class="text-secondary small p-2">No targets in this group.</div>
+          {{ end }}
+        </div>
       </div>
       {{ end }}
 
@@ -290,15 +338,19 @@
         <h5 class="modal-title" id="targetModalLabel">Add Target</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form id="targetForm" method="post">
-        <div class="modal-body">
-          <div class="mb-3 form-floating">
-            <input type="text" class="form-control" id="targetName" name="name" required />
-            <label for="targetName" class="form-label">Name</label>
+  <form id="targetForm" method="post">
+    <div class="modal-body">
+      <div class="mb-3 form-floating">
+        <input type="text" class="form-control" id="targetName" name="name" required />
+        <label for="targetName" class="form-label">Name</label>
           </div>
           <div class="mb-3 form-floating">
             <input type="text" class="form-control" id="targetDesc" name="description" required />
             <label for="targetDesc" class="form-label">Description</label>
+          </div>
+          <div class="mb-3 form-floating">
+            <input type="number" class="form-control" id="targetOrder" name="displayOrder" value="0" required />
+            <label for="targetOrder" class="form-label">Display Order</label>
           </div>
           <div class="mb-3 form-floating">
             <input type="text" class="form-control" id="targetHost" name="host" required />
@@ -308,17 +360,27 @@
             <input type="number" class="form-control" id="targetPort" name="port" required />
             <label for="targetPort" class="form-label">Port</label>
           </div>
-          <div class="form-floating">
+          <div class="mb-3 form-floating">
             <input type="text" class="form-control" id="targetUser" name="user" required />
             <label for="targetUser" class="form-label">User</label>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">OK</button>
-        </div>
-      </form>
+          <div class="form-floating">
+            <select class="form-select" id="targetGroup" name="groupId">
+              <option value="">No group</option>
+              {{ range .targetGroups }}
+              <option value="{{.ID}}">{{.Title}}</option>
+              {{ end }}
+            </select>
+            <label for="targetGroup" class="form-label">Group</label>
+          </div>
     </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-danger me-auto d-none" id="targetDeleteInModal" data-bs-toggle="modal" data-bs-target="#deleteTargetModal" data-bs-dismiss="modal">Delete</button>
+      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      <button type="submit" class="btn btn-primary">OK</button>
+    </div>
+  </form>
+</div>
   </div>
 </div>
 
@@ -353,54 +415,329 @@
   </div>
 </div>
 
+<div class="modal fade" id="groupModal" tabindex="-1" aria-labelledby="groupModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="groupModalLabel">Add Group</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="groupForm" method="post">
+        <div class="modal-body">
+          <div class="mb-3 form-floating">
+            <input type="text" class="form-control" id="groupTitle" name="title" required />
+            <label for="groupTitle" class="form-label">Title</label>
+          </div>
+          <div class="mb-3 form-floating">
+            <input type="text" class="form-control" id="groupDescription" name="description" />
+            <label for="groupDescription" class="form-label">Description</label>
+          </div>
+          <div class="form-floating">
+            <input type="number" class="form-control" id="groupOrder" name="displayOrder" value="0" required />
+            <label for="groupOrder" class="form-label">Display Order</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">OK</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div
+  class="modal fade"
+  id="deleteGroupModal"
+  tabindex="-1"
+  aria-labelledby="deleteGroupModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteGroupModalLabel">Delete Group</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Are you sure you want to delete group
+          <strong id="deleteGroupTitle"></strong>
+          ?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteGroupForm" method="post" class="d-inline">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  // 当 targetModal 显示时，动态调整内容
+  const postJSON = async (url, payload) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  };
+
   const targetModal = document.getElementById('targetModal');
-  targetModal.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const action = button.getAttribute('data-action'); // 检查是创建还是更新
+  const targetForm = document.getElementById('targetForm');
+  const deleteBtn = document.getElementById('targetDeleteInModal');
 
+  const fillTargetModal = (action, data) => {
     const modalTitle = targetModal.querySelector('.modal-title');
-    const targetForm = document.getElementById('targetForm');
-
     if (action === 'create') {
       modalTitle.textContent = 'Add Target';
       targetForm.action = '/target';
-      // 清空表单
       document.getElementById('targetName').value = '';
+      document.getElementById('targetDesc').value = '';
+      document.getElementById('targetOrder').value = '0';
       document.getElementById('targetHost').value = '';
       document.getElementById('targetPort').value = '';
       document.getElementById('targetUser').value = '';
-    } else if (action === 'update') {
-      const id = button.getAttribute('data-id');
-      const name = button.getAttribute('data-name');
-      const host = button.getAttribute('data-host');
-      const port = button.getAttribute('data-port');
-      const user = button.getAttribute('data-user');
-      const desc = button.getAttribute('data-desc');
-
+      document.getElementById('targetGroup').value = '';
+      deleteBtn.classList.add('d-none');
+    } else {
       modalTitle.textContent = 'Edit Target';
-      targetForm.action = '/target/update/' + id;
-      // 预填充表单
-      document.getElementById('targetName').value = name;
-      document.getElementById('targetHost').value = host;
-      document.getElementById('targetPort').value = port;
-      document.getElementById('targetUser').value = user;
-      document.getElementById('targetDesc').value = desc;
+      targetForm.action = '/target/update/' + data.id;
+      document.getElementById('targetName').value = data.name || '';
+      document.getElementById('targetHost').value = data.host || '';
+      document.getElementById('targetPort').value = data.port || '';
+      document.getElementById('targetUser').value = data.user || '';
+      document.getElementById('targetDesc').value = data.desc || '';
+      document.getElementById('targetOrder').value = data.order || '0';
+      document.getElementById('targetGroup').value = data.group || '';
+      deleteBtn.classList.remove('d-none');
+      deleteBtn.setAttribute('data-id', data.id);
+      deleteBtn.setAttribute('data-name', data.name || '');
     }
+  };
+
+  targetModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    if (!button) return;
+    const action = button.getAttribute('data-action') || 'create';
+    const data = {
+      id: button.getAttribute('data-id'),
+      name: button.getAttribute('data-name'),
+      host: button.getAttribute('data-host'),
+      port: button.getAttribute('data-port'),
+      user: button.getAttribute('data-user'),
+      desc: button.getAttribute('data-desc'),
+      order: button.getAttribute('data-order'),
+      group: button.getAttribute('data-group'),
+    };
+    fillTargetModal(action, data);
   });
 
   // 当 deleteTargetModal 显示时，设置表单 action 和显示要删除的服务器名称
   const deleteTargetModal = document.getElementById('deleteTargetModal');
   deleteTargetModal.addEventListener('show.bs.modal', function (event) {
-    const button = event.relatedTarget;
-    const id = button.getAttribute('data-id');
-    const name = button.getAttribute('data-name');
+    const trigger = event.relatedTarget;
+    const id = trigger.getAttribute('data-id');
+    const name = trigger.getAttribute('data-name');
 
     const deleteForm = document.getElementById('deleteForm');
     deleteForm.action = '/target/delete/' + id;
 
     document.getElementById('deleteTargetName').textContent = name;
+  });
+
+  const groupModal = document.getElementById('groupModal');
+  groupModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const action = button.getAttribute('data-action');
+    const modalTitle = groupModal.querySelector('.modal-title');
+    const groupForm = document.getElementById('groupForm');
+
+    if (action === 'create') {
+      modalTitle.textContent = 'Add Group';
+      groupForm.action = '/target-group';
+      document.getElementById('groupTitle').value = '';
+      document.getElementById('groupDescription').value = '';
+      document.getElementById('groupOrder').value = '0';
+    } else if (action === 'update') {
+      const id = button.getAttribute('data-id');
+      const title = button.getAttribute('data-title');
+      const description = button.getAttribute('data-description');
+      const order = button.getAttribute('data-order') || '0';
+
+      modalTitle.textContent = 'Edit Group';
+      groupForm.action = '/target-group/update/' + id;
+      document.getElementById('groupTitle').value = title;
+      document.getElementById('groupDescription').value = description;
+      document.getElementById('groupOrder').value = order;
+    }
+  });
+
+  const deleteGroupModal = document.getElementById('deleteGroupModal');
+  deleteGroupModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const id = button.getAttribute('data-id');
+    const title = button.getAttribute('data-title');
+
+    const deleteForm = document.getElementById('deleteGroupForm');
+    deleteForm.action = '/target-group/delete/' + id;
+
+    document.getElementById('deleteGroupTitle').textContent = title;
+  });
+
+  // 原生拖拽：分组排序
+  const groupContainer = document.getElementById('groupsContainer');
+  let draggedGroup = null;
+
+  const handleGroupDragStart = (e) => {
+    draggedGroup = e.currentTarget.closest('[data-group-block]');
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('opacity-50');
+  };
+
+  const handleGroupDragEnd = (e) => {
+    e.currentTarget.classList.remove('opacity-50');
+    draggedGroup = null;
+  };
+
+  const handleGroupDragOver = (e) => {
+    e.preventDefault();
+    const targetBlock = e.target.closest('[data-group-block]');
+    if (!targetBlock || targetBlock === draggedGroup || targetBlock.parentNode !== groupContainer) return;
+    const rect = targetBlock.getBoundingClientRect();
+    const before = e.clientY < rect.top + rect.height / 2;
+    if (before) {
+      groupContainer.insertBefore(draggedGroup, targetBlock);
+    } else {
+      groupContainer.insertBefore(draggedGroup, targetBlock.nextSibling);
+    }
+  };
+
+  const saveGroupOrder = async () => {
+    const ids = Array.from(groupContainer.querySelectorAll('[data-group-block]'))
+      .map((el) => el.getAttribute('data-group-id'))
+      .filter((id) => id)
+      .map((id) => parseInt(id, 10)); // 排除未分组块，并转为数字
+    try {
+      await postJSON('/target-group/reorder', { groupIds: ids });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  groupContainer?.addEventListener('dragover', handleGroupDragOver);
+  groupContainer?.addEventListener('drop', (e) => {
+    e.preventDefault();
+    saveGroupOrder();
+  });
+  groupContainer?.querySelectorAll('[data-group-block][draggable="true"] .group-row').forEach((row) => {
+    row.addEventListener('dragstart', handleGroupDragStart);
+    row.addEventListener('dragend', (e) => {
+      handleGroupDragEnd(e);
+      saveGroupOrder();
+    });
+  });
+
+  // 原生拖拽：目标排序与跨组移动
+  let draggedTarget = null;
+
+  const handleTargetDragStart = (e) => {
+    draggedTarget = e.currentTarget;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.classList.add('opacity-50');
+  };
+
+  const handleTargetDragEnd = (e) => {
+    e.currentTarget.classList.remove('opacity-50');
+    draggedTarget = null;
+  };
+
+  const handleTargetDragOver = (e) => {
+    if (!draggedTarget) return;
+    e.preventDefault();
+    const targetRow = e.target.closest('.target-row');
+    const list = e.target.closest('[data-target-list]');
+    if (!list) return;
+    if (targetRow && targetRow !== draggedTarget) {
+      const rect = targetRow.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      if (before) {
+        list.insertBefore(draggedTarget, targetRow);
+      } else {
+        list.insertBefore(draggedTarget, targetRow.nextSibling);
+      }
+    } else if (!targetRow) {
+      // drop inside list but not on item -> append
+      list.appendChild(draggedTarget);
+    }
+  };
+
+  const handleTargetDrop = (e) => {
+    if (!draggedTarget) return;
+    e.preventDefault();
+    const list = e.target.closest('[data-target-list]');
+    if (list && draggedTarget.parentNode !== list) {
+      list.appendChild(draggedTarget);
+    }
+    saveTargetOrder();
+  };
+
+  const collectTargetOrderPayload = () => {
+    const groupsPayload = [];
+    document.querySelectorAll('[data-group-block]').forEach((block) => {
+      const groupId = block.getAttribute('data-group-id');
+      const list = block.querySelector('[data-target-list]');
+      const targetIds = Array.from(list.querySelectorAll('[data-target-id]')).map((el) =>
+        parseInt(el.getAttribute('data-target-id'))
+      );
+      if (groupId) {
+        groupsPayload.push({ groupId: parseInt(groupId), targetIds: targetIds });
+      }
+    });
+    const ungroupedList = document.querySelector('[data-target-list][data-group-id=""]');
+    const ungrouped = ungroupedList
+      ? Array.from(ungroupedList.querySelectorAll('[data-target-id]')).map((el) =>
+          parseInt(el.getAttribute('data-target-id'))
+        )
+      : [];
+    return { groups: groupsPayload, ungrouped: ungrouped };
+  };
+
+  const saveTargetOrder = async () => {
+    const payload = collectTargetOrderPayload();
+    try {
+      await postJSON('/target/reorder', payload);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  document.querySelectorAll('.target-row').forEach((row) => {
+    row.addEventListener('dragstart', handleTargetDragStart);
+    row.addEventListener('dragend', handleTargetDragEnd);
+    row.addEventListener('click', () => {
+      if (draggedTarget) return; // 避免拖动后误触
+      const data = {
+        id: row.getAttribute('data-target-id'),
+        name: row.getAttribute('data-name'),
+        host: row.getAttribute('data-host'),
+        port: row.getAttribute('data-port'),
+        user: row.getAttribute('data-user'),
+        desc: row.getAttribute('data-desc'),
+        order: row.getAttribute('data-order') || '0',
+        group: row.getAttribute('data-group-id') || '',
+      };
+      fillTargetModal('update', data);
+      bootstrap.Modal.getOrCreateInstance(targetModal).show();
+    });
+  });
+  document.querySelectorAll('[data-target-list]').forEach((list) => {
+    list.addEventListener('dragover', handleTargetDragOver);
+    list.addEventListener('drop', handleTargetDrop);
   });
 </script>
 {{ end }}

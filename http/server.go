@@ -117,7 +117,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 	server.app.Use(sessions.Sessions("sshmux", sessionStore))
 
 	gv := ginview.New(goview.Config{
-		Root:         "templates",
+		Root:         "http/templates",
 		Extension:    ".tmpl",
 		Master:       "layout",
 		DisableCache: true,
@@ -136,7 +136,7 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 		},
 	})
 
-	gv.SetFileHandler(embeddedFH)
+	// gv.SetFileHandler(embeddedFH)
 
 	server.app.HTMLRender = gv
 
@@ -160,6 +160,11 @@ func NewServer(config *common.Config) (*HTTPServer, error) {
 	server.app.POST("/target", RequireAdmin(), server.CreateTarget)
 	server.app.POST("/target/delete/:id", RequireAdmin(), server.DeleteTarget)
 	server.app.POST("/target/update/:id", RequireAdmin(), server.UpdateTarget)
+	server.app.POST("/target-group", RequireAdmin(), server.CreateTargetGroup)
+	server.app.POST("/target-group/update/:id", RequireAdmin(), server.UpdateTargetGroup)
+	server.app.POST("/target-group/delete/:id", RequireAdmin(), server.DeleteTargetGroup)
+	server.app.POST("/target/reorder", RequireAdmin(), server.ReorderTargets)
+	server.app.POST("/target-group/reorder", RequireAdmin(), server.ReorderTargetGroups)
 	server.app.POST("/user/delete/:id", RequireAdmin(), server.DeleteUser)
 	server.app.POST("/username", server.ChangeUserName)
 

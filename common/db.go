@@ -23,13 +23,24 @@ type SSOCredential struct {
 	UserID       uint
 }
 
+type TargetGroup struct {
+	gorm.Model
+	Title        string
+	Description  string
+	DisplayOrder int
+	Targets      []Target `gorm:"constraint:OnDelete:SET NULL;"`
+}
+
 type Target struct {
 	gorm.Model
-	Name        string `gorm:"unique"`
-	Description string
-	Host        string
-	Port        int32
-	User        string
+	Name          string `gorm:"unique"`
+	Description   string
+	Host          string
+	Port          int32
+	User          string
+	DisplayOrder  int
+	TargetGroup   TargetGroup
+	TargetGroupID *uint
 }
 
 type Pubkey struct {
